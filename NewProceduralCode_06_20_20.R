@@ -12,17 +12,30 @@ Packages <- c("dplyr", "stats", "nFactors", "psych", "ggplot2", "lme4",
 
 lapply(Packages, library, character.only = TRUE)
 
+####Organizational ####s
+
 #set subject directory 
-setwd("~/Dropbox (MIT)/learning_analysis")
+#setwd("~/Dropbox (MIT)/learning_analysis")
+setwd("~/Dropbox (MIT)/GitHub/procedural-learning")
+
 #import pocedural.csv file
-d <- read.csv('procedural_data120419.csv',stringsAsFactors = FALSE,skipNul = TRUE,
+d <- read.csv('procedural_data062220.csv',stringsAsFactors = FALSE,skipNul = TRUE,
               blank.lines.skip = TRUE)
-SL=read.csv("~/Dropbox (MIT)/learning_analysis/SL/analysis_102818/SL_102818.csv")
+groups<-read.csv(file = "~/Dropbox (MIT)/ABCD_analysis/ABCDStudy_2019-09-19.csv")[ ,c('ABCD.ID', 'Subgroup')]
+d<-merge(d,groups)
+names(d)[names(d)=="abcd_id"] <- "PartID"
+
+SL=read.csv("SL_102818.csv")
+SL<-merge
+#Rename variables and organize
+names(d)[names(d)=="ABCD.ID"] <- "PartID"
+d2<-merge(d,SL)
 
 #exclude ineligible participants
-d<-d%>%filter(d$ABCD.ID!='ABCD_1718')
-d<-d%>%filter(d$ABCD.ID!='ABCD_1728')
-d<-d%>%filter(d$Subgroup=='Dyslexic' | d$Subgroup=='Typical')
+d<-d%>%filter(d$PartID!='ABCD_1718')
+d<-d%>%filter(d$PartID!='ABCD_1728')
+
+d<-d%>%filter(d$Subgroup=='1' | d$Subgroup=='0')
 
 #create data frames for task
 dfABCD<-d[c(4:36)]
@@ -304,5 +317,6 @@ d2<-merge(d,SL)
 anova(lm(VSL_ACC~Sex+Age+Subgroup, data=d2))
 anova(lm(TSL_ACC~Sex+Age+Subgroup, data=d2))
 
+anova(lm(TSL_ACC~Sex+Age+Subgroup+, data=d2))
 
 
