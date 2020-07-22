@@ -7,7 +7,7 @@
 #
 
 #import packages 
-Packages <- c("dplyr", "stats", "nFactors", "psych", "ggplot2", "lme4", 
+Packages <- c("dplyr", "stats", "psych", "ggplot2", "lme4", 
               "gridExtra", "dplyr","caret","tidyverse", "ggplot2","plyr")
 
 lapply(Packages, library, character.only = TRUE)
@@ -22,20 +22,17 @@ setwd("~/Dropbox (MIT)/GitHub/procedural-learning")
 d <- read.csv('procedural_data062220.csv',stringsAsFactors = FALSE,skipNul = TRUE,
               blank.lines.skip = TRUE)
 groups<-read.csv(file = "~/Dropbox (MIT)/ABCD_analysis/ABCDStudy_2019-09-19.csv")[ ,c('ABCD.ID', 'Subgroup')]
-d<-merge(d,groups)
+names(groups)[names(groups)=="ABCD.ID"] <- "PartID"
 names(d)[names(d)=="abcd_id"] <- "PartID"
-
+d<-merge(d,groups)
 SL=read.csv("SL_102818.csv")
-SL<-merge
 #Rename variables and organize
-names(d)[names(d)=="ABCD.ID"] <- "PartID"
-d2<-merge(d,SL)
 
 #exclude ineligible participants
 d<-d%>%filter(d$PartID!='ABCD_1718')
 d<-d%>%filter(d$PartID!='ABCD_1728')
 
-d<-d%>%filter(d$Subgroup=='1' | d$Subgroup=='0')
+d<-d%>%filter(d$Subgroup=="Typical"| d$Subgroup=="Dyslexic")
 
 #create data frames for task
 dfABCD<-d[c(4:36)]
