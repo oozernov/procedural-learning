@@ -1,7 +1,7 @@
 ---
 title: "ABCD Analysis"
 author: "Zhenghan Qi"
-date: "June 16, 2020"
+date: "July 24, 2020"
 output:
   pdf_document: default
   html_document: default
@@ -188,15 +188,18 @@ return(mean_table)
 }
 ```
 
-* the DD group had a faster RT acceleration than the TYP group
+* the DD group had a faster RT acceleration than the TYP group tested by linear regression model
 ```{r,echo=FALSE,warning=FALSE}
 fam_trial_vsl <- compute_visual()
 model1 <- lm(rt_col~reindex*group_cond,data=fam_trial_vsl)
 print(summary(model1))
-#model2 <- aov(rt_col~group_cond*reindex + Error(id/reindex),data=fam_trial_vsl)
-#summary(model2)
 ```
-
+* but the group difference is marginal when tested by multi-level model with random intercept and random slope on reindex.
+```{r,echo=FALSE,warning=FALSE}
+library(lmerTest)
+model2 <- lmer(rt_col~group_cond*reindex + (1|id)+(0+reindex|id),data=fam_trial_vsl)
+summary(model2)
+```
 ##Plot of VSL RT
 ```{r,echo=FALSE}
 ggplot() +
@@ -297,10 +300,10 @@ return(mean_table)
 * the two groups are not different in RT slope.
 ```{r,echo=FALSE,warning=FALSE}
 fam_trial_tsl <- compute_aud()
-
 model1 <- lm(rt_col~reindex*group_cond,data=fam_trial_tsl)
 print(summary(model1))
-#model2 <- aov(rt_col~group_cond*timeline + Error(id/timeline),data=fam_trial_tsl)
+model2 <- lmer(rt_col~reindex*group_cond+(1|id)+(0+reindex|id),data=fam_trial_tsl)
+summary(model2)
 ```
 
 ##Plot of TSL RT
