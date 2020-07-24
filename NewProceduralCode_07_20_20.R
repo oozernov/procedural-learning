@@ -276,27 +276,26 @@ ggplot(data = mtEPlot, aes(x=trial, y=meanE, color = Subgroup))+
 ### Slopes ###
 
 #slope based on error
-d_list <- vector(mode = "list", length = nrow(mt)*2)
-index <- 0
+#d_list <- vector(mode = "list", length = nrow(mt)*2)
+#index <- 0
 
 abcd_m_ids=unique(mt$PartID)
 b_list5=c()
 m_list5 = c()
 
 for (subj in abcd_m_ids) { #d_export is my list of subject 
-  #for (a in c("d", "b")) 
   # index <- index + 1
   print(subj)
   d_m_subj <- filter(mt2, PartID==subj)
-  subj_m_model <- glm(error ~ trial, #complettion time(On/Off) ~trial
+  subj_m_model <- lm(error ~ trial, #complettion time(On/Off) ~trial
                       data = d_m_subj)
   b_list5[subj] <- as.numeric(subj_m_model$coefficients[1]) # coefficient intercept
   m_list5[subj] <- as.numeric(subj_m_model$coefficients[2]) # coefficient slope
 }
 
 #slope based on time
-d_list2 <- vector(mode = "list", length = nrow(mt)*2)
-index <- 0
+#d_list2 <- vector(mode = "list", length = nrow(mt)*2)
+#index <- 0
 b_list7=c()
 m_list7 = c()
 
