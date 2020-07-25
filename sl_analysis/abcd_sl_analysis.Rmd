@@ -17,6 +17,7 @@ library(lmerTest)
 library(scales)
 library(ggbeeswarm)
 library(Hmisc)
+library(ggbeeswarm)
 ```
 
 ```{r,echo=FALSE}
@@ -149,7 +150,6 @@ mean_rt <- NULL
 rt_slope <- NULL
 mean_table <- fam_trial[which(fam_trial$rt_col!=-1 & fam_trial$rt_col<1000 & fam_trial$rt_col>-1000), ] #only accept answers in range of -1000 < x < 1000
 
-
 list_vsl_id <- unique(mean_table$id)
 
 for(id in list_vsl_id){
@@ -181,42 +181,239 @@ vrtdd <- t.test(subj_table$rt_slope[subj_table$group=="DD"],mu=0,alternative="le
 vrttyp <- t.test(subj_table$rt_slope[subj_table$group=="TYP"],mu=0,alternative="less")
 vdd_v_typ <- t.test(rt_slope~group,data=subj_table)
 model3 <- wilcox.test(dprime~group,data=subj_table)
+model4 <- wilcox.test(mean_rt~group,data=subj_table)
 print(model3)
+print(model4)
 print(vrtdd)
 print(vrttyp)
 return(mean_table)
 }
+
+compute_visual_scale <- function(data)
+{
+rt_col <- NULL
+id <- NULL
+trial <- NULL
+target <- NULL
+group_cond <- NULL
+
+row_number <- which(vsl$targ==vsl$stimulus) #extract rows in which stimuli match with target
+for (i in row_number){
+        rt_col <- append(rt_col,vsl[i,][,"rt"])
+        trial <- append(trial,vsl[i,][,"trial_index"])
+        id <- append(id,vsl[i,]$par_id)
+        group_cond <- append(group_cond,vsl[i,]$group)
+    if (vsl[i-1,][,"rt"]!=-1){
+        rt_col[(match(i,row_number))] <- -(1000-vsl[i-1,][,"rt"])
+    }}
+
+rt_df1 <- data.frame(trial,rt_col,id,group_cond) 
+#NOTE: Depending on your version of R and your setting, the lines below may run inaccurately. You can check type rt_df1 after running this line to check if it returns a correct data frame. If not, run these two lines instead: 
+#rt_df1 <- data.frame(unlist(trial),unlist(rt_col),id,group_cond) 
+#colnames(rt_df1) <- c("trial","rt_col","id","group_cond")
+
+fam_block <- vsl[which(vsl$trial_index<=300 & vsl$trial_index>=12),] #the familiarization block starts with index number 13 and ends with index 300
+fam_trial <- rt_df1[which(rt_df1$trial<=300 & rt_df1$trial>=12), ]
+reindex <- rep(1:total_vsl_trial,total_participant)
+fam_trial$reindex <- reindex
+fam_trial <- fam_trial[which(!is.na(fam_trial$group_cond)),]
+
+hit_rate <- NULL
+miss_rate <- NULL
+correct_rejection <- NULL
+false_alarm <- NULL
+mean_rt <- NULL
+rt_slope <- NULL
+mean_table <- fam_trial[which(fam_trial$rt_col!=-1 & fam_trial$rt_col<1000 & fam_trial$rt_col>-1000), ] #only accept answers in range of -1000 < x < 1000
+
+list_vsl_id <- unique(mean_table$id)
+
+for(id in list_vsl_id){
+  mean_rt<-append(mean_rt,round(mean(mean_table$rt_col[mean_table$id==id]),digits=3))
+  # normalize each participant's RT
+  mean_table$rt_col[mean_table$id==id] = scale(mean_table$rt_col[mean_table$id==id])
+  rt_slope <-append(rt_slope,round(summary(lm(mean_table$rt_col[mean_table$id==id]~mean_table$reindex[mean_table$id==id]))$coefficient[2,1],digits=3))
+  hit_rate<-append(hit_rate,round(sum(!is.na(mean_table$rt_col[mean_table$id==id]))/total_vsl_trial,digits =2))
+  miss_rate<-append(miss_rate,round(sum(fam_trial$rt_col[fam_trial$id==id]==-1)/total_vsl_trial,digits=2))
+  correct_rejection <- append(correct_rejection, round(sum(fam_block$rt[fam_block$par_id==id]==-1 & fam_block$targ[fam_block$par_id==id]!=fam_block$stimulus[fam_block$par_id==id])/264,digits=3)) #264 is the total number of stimuli in the familiarization block
+  false_alarm <- append(false_alarm, round(sum(fam_block$rt[fam_block$par_id==id]!=-1 & fam_block$targ[fam_block$par_id==id]!=fam_block$stimulus[fam_block$par_id==id])/264,digits=3))
+}
+
+subj_table <- data.frame(list_vsl_id,mean_rt, rt_slope,hit_rate, miss_rate,correct_rejection,false_alarm)
+dprime<-NULL
+for (i in seq(from=1,to=length(subj_table$list_vsl_id),by=1)){dprime<-append(dprime,qnorm(subj_table[i,]$hit_rate-0.00000001)-qnorm(subj_table[i,]$false_alarm+0.000000001))} #minus 0.000000001 to avoid perfect hit rate
+subj_table$dprime <- dprime
+
+#colnames(subj_table) <- c("VSL_ID","mean_rt", "rt_slope","hit", "miss","corr_rejection","false_alarm","dprime")
+#print(kable(subj_table,format = "pandoc"))
+
+group <- NULL
+for (i in seq(from=1,to=length(subj_table$list_vsl_id),by=1))
+    {if (subj_table[i,]$list_vsl_id %in% TYP)
+    {group[i]<-"TYP"}
+    else if (subj_table[i,]$list_vsl_id %in% DD)
+    {group[i] <- "DD"}}
+subj_table$group <- group
+
+return(mean_table)
+}
+
+get_subj_visual <- function(data)
+{
+rt_col <- NULL
+id <- NULL
+trial <- NULL
+target <- NULL
+group_cond <- NULL
+
+row_number <- which(vsl$targ==vsl$stimulus) #extract rows in which stimuli match with target
+for (i in row_number){
+        rt_col <- append(rt_col,vsl[i,][,"rt"])
+        trial <- append(trial,vsl[i,][,"trial_index"])
+        id <- append(id,vsl[i,]$par_id)
+        group_cond <- append(group_cond,vsl[i,]$group)
+    if (vsl[i-1,][,"rt"]!=-1){
+        rt_col[(match(i,row_number))] <- -(1000-vsl[i-1,][,"rt"])
+    }}
+
+rt_df1 <- data.frame(trial,rt_col,id,group_cond) 
+#NOTE: Depending on your version of R and your setting, the lines below may run inaccurately. You can check type rt_df1 after running this line to check if it returns a correct data frame. If not, run these two lines instead: 
+#rt_df1 <- data.frame(unlist(trial),unlist(rt_col),id,group_cond) 
+#colnames(rt_df1) <- c("trial","rt_col","id","group_cond")
+
+fam_block <- vsl[which(vsl$trial_index<=300 & vsl$trial_index>=12),] #the familiarization block starts with index number 13 and ends with index 300
+fam_trial <- rt_df1[which(rt_df1$trial<=300 & rt_df1$trial>=12), ]
+reindex <- rep(1:total_vsl_trial,total_participant)
+fam_trial$reindex <- reindex
+fam_trial <- fam_trial[which(!is.na(fam_trial$group_cond)),]
+
+hit_rate <- NULL
+miss_rate <- NULL
+correct_rejection <- NULL
+false_alarm <- NULL
+mean_rt <- NULL
+rt_slope <- NULL
+rt_slope_scale <- NULL
+mean_table <- fam_trial[which(fam_trial$rt_col!=-1 & fam_trial$rt_col<1000 & fam_trial$rt_col>-1000), ] #only accept answers in range of -1000 < x < 1000
+
+list_vsl_id <- unique(mean_table$id)
+
+for(id in list_vsl_id){
+  mean_rt<-append(mean_rt,round(mean(mean_table$rt_col[mean_table$id==id]),digits=3))
+  mean_table$rt_col_scale[mean_table$id==id]<-scale(mean_table$rt_col[mean_table$id==id])
+  rt_slope <-append(rt_slope,round(summary(lm(mean_table$rt_col[mean_table$id==id]~mean_table$reindex[mean_table$id==id]))$coefficient[2,1],digits=3))
+  rt_slope_scale <-append(rt_slope_scale,round(summary(lm(mean_table$rt_col_scale[mean_table$id==id]~mean_table$reindex[mean_table$id==id]))$coefficient[2,1],digits=3))
+  hit_rate<-append(hit_rate,round(sum(!is.na(mean_table$rt_col[mean_table$id==id]))/total_vsl_trial,digits =2))
+  miss_rate<-append(miss_rate,round(sum(fam_trial$rt_col[fam_trial$id==id]==-1)/total_vsl_trial,digits=2))
+  correct_rejection <- append(correct_rejection, round(sum(fam_block$rt[fam_block$par_id==id]==-1 & fam_block$targ[fam_block$par_id==id]!=fam_block$stimulus[fam_block$par_id==id])/264,digits=3)) #264 is the total number of stimuli in the familiarization block
+  false_alarm <- append(false_alarm, round(sum(fam_block$rt[fam_block$par_id==id]!=-1 & fam_block$targ[fam_block$par_id==id]!=fam_block$stimulus[fam_block$par_id==id])/264,digits=3))
+}
+
+subj_table <- data.frame(list_vsl_id,mean_rt, rt_slope,rt_slope_scale,hit_rate, miss_rate,correct_rejection,false_alarm)
+dprime<-NULL
+for (i in seq(from=1,to=length(subj_table$list_vsl_id),by=1)){dprime<-append(dprime,qnorm(subj_table[i,]$hit_rate-0.00000001)-qnorm(subj_table[i,]$false_alarm+0.000000001))} #minus 0.000000001 to avoid perfect hit rate
+subj_table$dprime <- dprime
+
+#colnames(subj_table) <- c("VSL_ID","mean_rt", "rt_slope","hit", "miss","corr_rejection","false_alarm","dprime")
+#print(kable(subj_table,format = "pandoc"))
+
+group <- NULL
+for (i in seq(from=1,to=length(subj_table$list_vsl_id),by=1))
+    {if (subj_table[i,]$list_vsl_id %in% TYP)
+    {group[i]<-"TYP"}
+    else if (subj_table[i,]$list_vsl_id %in% DD)
+    {group[i] <- "DD"}}
+subj_table$group <- group
+
+return(subj_table)
+}
 ```
 
-* the DD group had a faster RT acceleration than the TYP group tested by linear regression model
+* The DD group had a faster RT acceleration than the TYP group tested by linear regression model
 ```{r,echo=FALSE,warning=FALSE}
 fam_trial_vsl <- compute_visual()
+subj_table_vsl <- get_subj_visual()
 model1 <- lm(rt_col~reindex*group_cond,data=fam_trial_vsl)
 print(summary(model1))
+fam_trial_vsl_scale <- compute_visual_scale()
+model1_scale <- lm(rt_col~reindex*group_cond,data=fam_trial_vsl_scale)
+print(summary(model1_scale))
 ```
-* but the group difference is marginal when tested by multi-level model with random intercept and random slope on reindex.
+* marginal results with the raw RT data and significant results (same as linear regression) with the scaled data tested by lmer.
 ```{r,echo=FALSE,warning=FALSE}
 library(lmerTest)
 model2 <- lmer(rt_col~group_cond*reindex + (1|id)+(0+reindex|id),data=fam_trial_vsl)
-summary(model2)
+print(summary(model2))
+model2_scale <- lmer(rt_col~group_cond*reindex + (1|id)+(0+reindex|id),data=fam_trial_vsl_scale)
+print(summary(model2_scale))
 ```
 ##Plot of VSL RT
+### RT as the function of Target repetition
 ```{r,echo=FALSE}
-ggplot() +
+library(reshape)
+library(reshape2)
+group_rt_mean_vsl = cast(fam_trial_vsl,reindex+group_cond~.,value="rt_col",mean)
+colnames(group_rt_mean_vsl)[3]="mean_RT"
+group_rt_sd_vsl = cast(fam_trial_vsl,reindex+group_cond~.,value="rt_col",sd)
+colnames(group_rt_sd_vsl)[3]="sd_RT"
+group_rt_length_vsl = cast(fam_trial_vsl,reindex+group_cond~.,value="rt_col",length)
+colnames(group_rt_length_vsl)[3]="length"
+group_rt_vsl = merge(group_rt_mean_vsl,group_rt_sd_vsl)
+group_rt_vsl = merge(group_rt_vsl,group_rt_length_vsl)
+group_rt_vsl$se = group_rt_vsl$sd/sqrt(group_rt_vsl$length)
+summary(group_rt_vsl)
+pd <- position_dodge(0.2)
+ggplot(group_rt_vsl,aes(x = reindex,y = mean_RT,colour = group_cond)) +
   theme_classic(base_size = 20.0) +
   xlab(label = 'Trial Index') +
-  ylab(label = 'Response time (ms) during\n VSL Familiarization') +
+  ylab(label = 'Response time during\n VSL Familiarization (ms)') +
   scale_x_continuous(breaks = pretty_breaks()) +
-  scale_y_continuous(breaks = pretty_breaks()) +
-  geom_point(aes(x = reindex,y = rt_col,colour = group_cond),data=fam_trial_vsl,shape = 23, size = 3) +
-  geom_smooth(aes(x = reindex,y = rt_col,colour = group_cond),data=fam_trial_vsl,method = 'lm',formula = 'y ~ x',se = FALSE)
+  scale_y_continuous(breaks = pretty_breaks(),limits=c(300,550)) +
+  scale_colour_hue(name="Group",    # Legend label, use darker colors
+                     breaks=c("DD", "TYP"),
+                     labels=c("Dyslexia", "Typical"),
+                     l=40) +
+  #scale_colour_brewer(palette = 'Set1') +
+  geom_point(position=pd,shape = 23, size = 3) +
+  geom_errorbar(position=pd,aes(ymin = mean_RT-se, ymax = mean_RT+se),width=0.1)+
+  geom_line(position=pd)+
+  theme(legend.justification=c(1,0),legend.position=c(1,0))  
 ```
 ###Boxplot of the first half of the trials is significantly greater than the latter half of the trial
 ```{r,echo=FALSE}
 par(mfrow=c(1,2))
-boxplot(fam_trial_vsl$rt_col[fam_trial_vsl$reindex<total_vsl_trial/2], main="RT - first half of the trials",col="deepskyblue4",ylim=c(-400,800))
-boxplot(fam_trial_vsl$rt_col[fam_trial_vsl$reindex>total_vsl_trial/2], main="RT - latter half of the trials",col="deepskyblue4",ylim=c(-400,800))
+boxplot(fam_trial_vsl_scale$rt_col[fam_trial_vsl_scale$reindex<total_vsl_trial/2], main="RT - first half of the trials",col="deepskyblue4",ylim=c(-4,4))
+boxplot(fam_trial_vsl_scale$rt_col[fam_trial_vsl_scale$reindex>total_vsl_trial/2], main="RT - latter half of the trials",col="deepskyblue4",ylim=c(-4,4))
 ```
+### plot mean RT slope across the two groups
+* mean RT slope
+```{r,echo=FALSE}
+cbbPalette <- c("#000000","#000000")
+ggplot() +
+  geom_bar(aes(x = group,y = rt_slope,fill = group),data=subj_table_vsl,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
+  theme_classic(base_size = 18.0) +
+  ylab(label = 'Response Time Slope (ms/Trial)') +
+  xlab(label = 'Group') +
+  #coord_cartesian(ylim = c(0.3,1)) +
+  geom_errorbar(aes(y = rt_slope, x = group),data=subj_table_vsl,size = 0.3,width = 0.2,fun.y = function(x) mean(x),fun.ymin = function(x) mean(x) - sd(x)/sqrt(length(x)),fun.ymax = function(x) mean(x) + sd(x)/sqrt(length(x)) ,stat = 'summary')+
+  geom_beeswarm(aes(x = group,y = rt_slope, colour = group),data=subj_table_vsl,dodge.width=0.9,cex=2.5) +
+  scale_fill_brewer(palette = 'Set1') + 
+  scale_color_manual(values=cbbPalette)
+```
+* mean RT slope scaled
+```{r,echo=FALSE}
+ggplot() +
+  geom_bar(aes(x = group,y = rt_slope_scale,fill = group),data=subj_table_vsl,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
+  theme_classic(base_size = 18.0) +
+  ylab(label = 'Scaled Response Time Slope\n(au/trial)') +
+  xlab(label = 'Group') +
+  #coord_cartesian(ylim = c(0.3,1)) +
+  geom_errorbar(aes(y = rt_slope_scale, x = group),data=subj_table_vsl,size = 0.3,width = 0.2,fun.y = function(x) mean(x),fun.ymin = function(x) mean(x) - sd(x)/sqrt(length(x)),fun.ymax = function(x) mean(x) + sd(x)/sqrt(length(x)) ,stat = 'summary')+
+  geom_beeswarm(aes(x = group,y = rt_slope_scale, colour = group),data=subj_table_vsl,dodge.width=0.9,cex=2.5) +
+  scale_fill_brewer(palette = 'Set1') + 
+  scale_color_manual(values=cbbPalette)
+```
+
 #Compute RT for TSL
 * The two groups are not different in the target detection task
 * Neither group showed a significant negative RT slope.
