@@ -250,7 +250,47 @@ anova(m4)
 
 
 ### Plot ###
- 
+mt2$time <- as.numeric(mt2$time) 
+mt2$error <- as.numeric(mt2$error)
+mt2$trial <- as.numeric(mt2$trial)
+
+mtTPlot<-dplyr::summarise(group_by(mt2,Subgroup,trial), n = n(),
+                         meanT=mean(time), sd=sd(time),se = sd/sqrt(n))
+mtEPlot<-dplyr::summarise(group_by(mt2,Subgroup,trial), n = n(),
+                          meanE=mean(error), sd=sd(error),se = sd/sqrt(n))
+
+
+ggplot(data = mtTPlot, aes(x=trial, y=meanT, color = Subgroup))+
+  geom_line() +geom_point()  +
+  geom_errorbar(aes(ymin=meanT-se,ymax=meanT+se),
+                width=.1,  size=0.5)+
+  scale_x_continuous(breaks=seq(0,10,1))+
+  #scale_y_continuous(limits = c(0.2, 0.5))+
+  theme(
+    axis.title = element_text(family = "Trebuchet MS", size = 20),
+    legend.key.size = unit(1, "cm"),
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15))  + 
+  labs(x = "Trials", y = "Completion Time (secs)") +
+  theme(panel.background = element_rect(fill = "white", colour = "grey50")) + 
+  theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
+
+ggplot(data = mtEPlot, aes(x=trial, y=meanE, color = Subgroup))+
+  geom_line() +geom_point()  +
+  geom_errorbar(aes(ymin=meanE-se,ymax=meanE+se),
+                width=.1,  size=0.5)+
+  scale_x_continuous(breaks=seq(0,10,1))+
+  #scale_y_continuous(limits = c(0.2, 0.5))+
+  theme(
+    axis.title = element_text(family = "Trebuchet MS", size = 20),
+    legend.key.size = unit(1, "cm"),
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15))  + 
+  labs(x = "Trials", y = "Errors") +
+  theme(panel.background = element_rect(fill = "white", colour = "grey50")) + 
+  theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
+
+
 
 ### Slopes ###
 
@@ -264,10 +304,9 @@ m_list5 = c()
 
 for (subj in abcd_ids) { #d_export is my list of subject 
   print(subj)
-  d_subj <- dplyr::filter(mt, PartID==subj)
-  #subj_model <- glm(error ~ trial, #errors
-                    #data = d_subj)
-  subj_model<- glm(error ~ ns(trial,3), data=d_subj,family = "poisson")
+  d_subj <- filter(mt, PartID==subj)
+  subj_model <- glm(error ~ trial, #errors
+                    data = d_subj)
   b_list5[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
   m_list5[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
 }
@@ -282,20 +321,19 @@ index <- 0
 abcd_ids=unique(mt$PartID)
 b_list7=c()
 m_list7 = c()
-mt$trial<-as.numeric(mt$trial)
+
 for (subj in abcd_ids) { #d_export is my list of subject 
   print(subj)
-  d_subj <- dplyr::filter(mt, PartID==subj)
-  #subj_model <- glm(time ~ trial, #complettion time(On/Off) ~trial
-                    #data = d_subj,na.action = 'na.omit')
-  subj_model<- glm(time ~ ns(trial,3), data=d_subj,family = "poisson")
+  d_subj <- filter(mt, PartID==subj)
+  subj_model <- glm(time ~ trial, #complettion time(On/Off) ~trial
+                    data = d_subj,na.action = 'na.omit')
   b_list7[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
   m_list7[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
   
 }
 
 #new data frame containing the mirror slopes
-mt_data2 <- cbind(PartID=abcd_ids,slope_me = m_list5, slope_mt = m_list7)
+mt_data <- cbind(PartID=abcd_ids,slope_me = m_list5, slope_mt = m_list7)
 mt_data<-as.data.frame(mt_data)
 mt_data$slope_me_t<-abs(as.numeric(mt_data$slope_me))
 mt_data$slope_me_t<-log10(mt_data$slope_me_t+1) #transform slope
@@ -315,7 +353,7 @@ anova(m4) #sig group difference
 
 plot_me_slope<-d2%>%dplyr::select("Subgroup","slope_me_t")
 
-ggpubr::ggdensity(plot_me_slope, x = "slope_me_t",
+ggdensity(plot_me_slope, x = "slope_me_t",
           add = "mean", rug = TRUE,
           color = "Subgroup", fill = "Subgroup",
           #palette = c("#00AFBB", "#E7B800"))
@@ -338,12 +376,76 @@ ggdensity(plot_rp_slope, x = "slopeProp_On_t",
           color = "Subgroup", fill = "Subgroup",
           #palette = c("#00AFBB", "#E7B800"))
 )
+
 #### Statistical Learning ####
-names(SL)[names(SL) == "PartID"] <- "ABCD.ID"
-d2<-merge(d,SL)
-anova(lm(VSL_ACC~Sex+Age+Subgroup, data=d2))
-anova(lm(TSL_ACC~Sex+Age+Subgroup, data=d2))
+names(SL)[names(SL) == "ABCD.ID"] <- "PartID"
+df<-merge(d2,SL,"PartID")
 
-anova(lm(TSL_ACC~Sex+Age+Subgroup+, data=d2))
+names(df)[names(df) == "slopeProp_On_t"] <- "RP_SLOPE"
+names(df)[names(df) == "slope_me_t"] <- "MTE_SLOPE"
+names(df)[names(df) == "slope_mt_t"] <- "MTT_SLOPE"
+df_t<-df%>%filter(Subgroup=="TYP")
+df_d<-df%>%filter(Subgroup=="DD")
+
+df2<-df%>%select('wrmt_basic_ss_2','ppvt_vocab_ss_2','kbit_ss_2','wais_total_ss_2','kbit_ss_2',
+                 'RP_SLOPE','MTE_SLOPE','MTT_SLOPE',
+                   'VSL_RT_SLOPE','TSL_RT_SLOPE','VSL_ACC','TSL_ACC')
+df2_d<-df_d%>%select('wrmt_basic_ss_2','ppvt_vocab_ss_2','kbit_ss_2','wais_total_ss_2','kbit_ss_2',
+                 'RP_SLOPE','MTE_SLOPE','MTT_SLOPE',
+                 'VSL_RT_SLOPE','TSL_RT_SLOPE','VSL_ACC','TSL_ACC')
+df2_t<-df_t%>%select('wrmt_basic_ss_2','ppvt_vocab_ss_2','kbit_ss_2','wais_total_ss_2','kbit_ss_2',
+                 'RP_SLOPE','MTE_SLOPE','MTT_SLOPE',
+                 'VSL_RT_SLOPE','TSL_RT_SLOPE','VSL_ACC','TSL_ACC')
+
+df2<-na.omit(df2)
+res <- cor(df2,method = "pearson") #change here based on normality
+melted_cormat <- reshape2::melt(res)
+ggplot(data = melted_cormat, aes(Var1, Var2, fill = value))+
+  geom_tile(color = "white")+
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(-1,1), space = "Lab", 
+                       name="Spearman\nCorrelation") +
+  theme_minimal()+ 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                   hjust = 1),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())+
+  coord_fixed()
+#DD
+
+df2_d<-na.omit(df2_d)
+res_d <- cor(df2_d,method = "pearson") #change here based on normality
+melted_cormat_d <- reshape2::melt(res_d)
+d<-ggplot(data = melted_cormat_d, aes(Var1, Var2, fill = value))+
+  geom_tile(color = "white")+
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(-1,1), space = "Lab", 
+                       name="Spearman\nCorrelation") +
+  theme_minimal()+ 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                   hjust = 1),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank()
+        )+
+  coord_fixed()+ggtitle("Correlations in Dys")
+
+#TYP
 
 
+df2_t<-na.omit(df2_t)
+res_t <- cor(df2_t,method = "pearson") #change here based on normality
+melted_cormat_t <- reshape2::melt(res_t)
+t<-ggplot(data = melted_cormat_t, aes(Var1, Var2, fill = value))+
+  geom_tile(color = "white")+
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(-1,1), space = "Lab", 
+                       name="Spearman\nCorrelation") +
+  theme_minimal()+ 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                   hjust = 1),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank()
+  )+
+  coord_fixed()+ggtitle("Correlations in Typ")
+
+grid.arrange(d,t,ncol=2)
