@@ -1,12 +1,10 @@
 ---
-title: "ABCD Analysis"
+title: "ABCD SL Analysis"
 author: "Zhenghan Qi"
 date: "July 24, 2020"
-output:
-  pdf_document: default
-  html_document: default
+output: pdf_document
 ---
-```{r,echo=FALSE,warning=FALSE}
+```{r,echo=FALSE,warning=FALSE,include=FALSE}
 #Loading library
 library(ggplot2)
 library(knitr)
@@ -22,6 +20,8 @@ library(magrittr)
 library(qwraps2)
 library(tidyverse)
 library(dplyr)
+library(ggpubr)
+library(rstatix)
 ```
 
 ```{r,echo=FALSE}
@@ -338,10 +338,9 @@ return(subj_table)
 fam_trial_vsl <- compute_visual()
 subj_table_vsl <- get_subj_visual()
 ```
-*summary outputs
+* VSL RT summary stats (mean +/ sd)
 ```{r,echo=FALSE,warning=FALSE}
 data<-as_tibble(subj_table_vsl)
-by_group_vsl <- summary_table(dplyr:group_by(data,group),our_summary1)
 data %>%
   group_by(group) %>%
   summarise(
@@ -399,15 +398,17 @@ ggplot(group_rt_vsl,aes(x = reindex,y = mean_RT,colour = group_cond)) +
   geom_line(position=pd)+
   theme(legend.justification=c(1,0),legend.position=c(1,0))  
 ```
-###Boxplot of the first half of the trials is significantly greater than the latter half of the trial
-```{r,echo=FALSE}
-par(mfrow=c(1,2))
-boxplot(fam_trial_vsl_scale$rt_col[fam_trial_vsl_scale$reindex<total_vsl_trial/2], main="RT - first half of the trials",col="deepskyblue4",ylim=c(-4,4))
-boxplot(fam_trial_vsl_scale$rt_col[fam_trial_vsl_scale$reindex>total_vsl_trial/2], main="RT - latter half of the trials",col="deepskyblue4",ylim=c(-4,4))
-```
+
+<!-- ### Boxplot of the first half of the trials is significantly greater than the latter half of the trial -->
+<!-- ```{r,echo=FALSE} -->
+<!-- par(mfrow=c(1,2)) -->
+<!-- boxplot(fam_trial_vsl_scale$rt_col[fam_trial_vsl_scale$reindex<total_vsl_trial/2], main="RT - first half of the trials",col="deepskyblue4",ylim=c(-4,4)) -->
+<!-- boxplot(fam_trial_vsl_scale$rt_col[fam_trial_vsl_scale$reindex>total_vsl_trial/2], main="RT - latter half of the trials",col="deepskyblue4",ylim=c(-4,4)) -->
+<!-- ``` -->
+
 ### plot mean RT slope across the two groups
 * mean RT slope
-```{r,echo=FALSE}
+```{r,echo=FALSE,warning=FALSE}
 cbbPalette <- c("#000000","#000000")
 ggplot() +
   geom_bar(aes(x = group,y = rt_slope,fill = group),data=subj_table_vsl,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
@@ -420,8 +421,9 @@ ggplot() +
   scale_fill_brewer(palette = 'Set1') + 
   scale_color_manual(values=cbbPalette)
 ```
+
 * mean RT slope scaled
-```{r,echo=FALSE}
+```{r,echo=FALSE,warning=FALSE}
 ggplot() +
   geom_bar(aes(x = group,y = rt_slope_scale,fill = group),data=subj_table_vsl,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
   theme_classic(base_size = 18.0) +
@@ -437,7 +439,7 @@ ggplot() +
 #Compute RT for TSL
 * The two groups are not different in the target detection task
 * Neither group showed a significant negative RT slope.
-```{r,echo=FALSE}
+```{r,echo=FALSE,warning=FALSE}
 compute_aud <- function(data)
 {
 rt_col <- NULL
@@ -668,7 +670,7 @@ fam_trial_tsl <- compute_aud()
 fam_trial_tsl_scale <- compute_aud_scale()
 subj_table_tsl <- get_subj_aud()
 ```
-*summary outputs
+* TSL RT summary (mean +/- sd)
 ```{r,echo=FALSE,warning=FALSE}
 data<-as_tibble(subj_table_tsl)
 data %>%
@@ -681,7 +683,8 @@ data %>%
           hits = qwraps2::mean_sd(hit_rate)
           )
 ```
-* remove outliers who have hit rate lower than and equal to 0.25 (14 DD and 18 TYP)
+
+* remove outliers who have hit rate lower than and equal to 0.25 (remaining participant: 14 DD and 18 TYP)
 * participants removed from analysis: ABCD_1705 ABCD_1720 ABCD_1747 ABCD_1767 ABCD_1783 ABCD_1788 ABCD_1709 ABCD_1724 
 ```{r,echo=FALSE,warning=FALSE}
 usable_tsl_rt<-subj_table_tsl[subj_table_tsl$hit_rate>0.25,]$list_tsl_id
@@ -697,6 +700,7 @@ data %>%
           hits = qwraps2::mean_sd(hit_rate)
           )
 ```
+
 * the two groups are not different in RT slope.
 ```{r,echo=FALSE,warning=FALSE}
 t.test(dprime~group,data=subj_table_tsl_usable)
@@ -758,6 +762,7 @@ ggplot() +
   scale_fill_brewer(palette = 'Set1') + 
   scale_color_manual(values=cbbPalette)
 ```
+
 * mean RT slope scaled
 ```{r,echo=FALSE}
 ggplot() +
@@ -768,6 +773,50 @@ ggplot() +
   #coord_cartesian(ylim = c(0.3,1)) +
   geom_errorbar(aes(y = rt_slope_scale, x = group),data=subj_table_tsl_usable,size = 0.3,width = 0.2,fun.y = function(x) mean(x),fun.ymin = function(x) mean(x) - sd(x)/sqrt(length(x)),fun.ymax = function(x) mean(x) + sd(x)/sqrt(length(x)) ,stat = 'summary')+
   geom_beeswarm(aes(x = group,y = rt_slope_scale, colour = group),data=subj_table_tsl_usable,dodge.width=0.9,cex=2.5) +
+  scale_fill_brewer(palette = 'Set1') + 
+  scale_color_manual(values=cbbPalette)
+```
+
+## Combine slope data of both tasks
+```{r,echo=FALSE,warning=FALSE}
+colnames(subj_table_tsl_usable)[1]="subj"
+colnames(subj_table_vsl)[1]="subj"
+subj_table_tsl_usable$task = "Auditory"
+subj_table_vsl$task = "Visual"
+all_subj_slope = rbind(subj_table_vsl,subj_table_tsl_usable)
+fam_trial_vsl_scale$task="Visual"
+fam_trial_tsl_usable_s$task="Auditory"
+all_fam_trials = rbind(fam_trial_vsl_scale,fam_trial_tsl_usable_s)
+```
+
+### check interactions between task and group, using scaled RT: No interaction; anova showed marginal main effect of group (TYP is slower)
+```{r,echo=FALSE,warning=FALSE}
+all_subj_slope$tasknum=""
+for (id in all_subj_slope$subj) {
+  all_subj_slope[all_subj_slope$subj==id,]$tasknum = nrow(all_subj_slope[all_subj_slope$subj==id,])
+}
+all_subj_slope_complete = subset(all_subj_slope,tasknum==2)
+model_rt <- aov(rt_slope_scale~task*group+mean_rt+Error(subj/task),data=all_subj_slope_complete) # controlling for mean rt.
+print(summary(model_rt))
+model_rt_lmer <- lmer(rt_col~task*group_cond+(1+task|id)+(1|reindex),data=all_fam_trials)
+print(summary(model_rt_lmer))
+```
+
+* plot both tasks (scaled RT)
+```{r,echo=FALSE}
+stat.test <- all_subj_slope %>%
+  group_by(task) %>%
+  tukey_hsd(rt_slope_scale~group)
+stat.test
+ggplot() +
+  geom_bar(aes(x = group,y = rt_slope_scale,fill = group),data=all_subj_slope,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
+  theme_classic(base_size = 18.0) +
+  ylab(label = 'Scaled Response Time Slope\n(au/trial)') +
+  xlab(label = 'Group') +
+  #coord_cartesian(ylim = c(0.3,1)) +
+  geom_errorbar(aes(y = rt_slope_scale, x = group),data=all_subj_slope,size = 0.3,width = 0.2,fun.y = function(x) mean(x),fun.ymin = function(x) mean(x) - sd(x)/sqrt(length(x)),fun.ymax = function(x) mean(x) + sd(x)/sqrt(length(x)) ,stat = 'summary')+
+  geom_beeswarm(aes(x = group,y = rt_slope_scale, colour = group),data=all_subj_slope,dodge.width=0.9,cex=2.5) +
+  facet_wrap(task~.) +
   scale_fill_brewer(palette = 'Set1') + 
   scale_color_manual(values=cbbPalette)
 ```
@@ -784,34 +833,37 @@ for (i in seq(from=1,to=length(tsl$cond),by=length_tsl)){tsl_cond<-append(tsl_co
 ans <- NULL
 keyv <- NULL
 subj <- NULL
-cond<- NULL
+group<- NULL
+cond<-NULL
 
 #Extract the response for the 2AFC task
 #vsl acc
-  row_numberv <- which(vsl_acc$key_press != -1 & vsl_acc$stimulus=="")
+row_numberv <- which(vsl_acc$key_press != -1 & vsl_acc$stimulus=="")
   for (i in row_numberv){
     ans<-append(ans,vsl_acc[i,]$key_press)
     subj <- append(subj,vsl_acc[i,]$par_id)
-    cond <- append(cond,vsl_acc[i,]$group)
+    cond <- append(cond,vsl_acc[i,]$cond)
+    group <- append(group,vsl_acc[i,]$group)
   }
   
-vsl_accuracy <- data.frame(ans,subj,cond)
+vsl_accuracy <- data.frame(ans,subj,cond,group)
 
 #tsl acc
 ans <- NULL
 keyt <- NULL
 subj <- NULL
-cond<- NULL
+group<- NULL
+cond<-NULL
 
 row_numbert <- which(tsl_acc$key_press != -1 & (tsl_acc$trial_index-613)%%7==0) #since there is no stimuli recorded for the test block of tsl, we can only get the correct answer by counting the index. The test starts at 613 and the response begins every 7 index after that
   for (i in row_numbert){
     ans<-append(ans,tsl_acc[i,]$key_press)
     subj <- append(subj,tsl_acc[i,]$par_id)
-   cond <- append(cond,vsl_acc[i,]$group)
-
+    cond <- append(cond,tsl_acc[i,]$cond)
+    group <- append(group,tsl_acc[i,]$group)
   }
  
-tsl_accuracy <- data.frame(ans,subj,cond)
+tsl_accuracy <- data.frame(ans,subj,cond,group)
 
 #Match the language condition with the correct answer key
 for(cond in vsl_cond){
@@ -821,7 +873,6 @@ for(cond in vsl_cond){
 for(cond in tsl_cond){
     if (cond=="lang1"){keyt<-append(keyt,language_1)}
     else if (cond=="lang2"){keyt<-append(keyt,language_2)}}
-
 
 
 vsl_accuracy$key <- keyv
@@ -836,72 +887,140 @@ tsl_accuracy$ans <- gsub(39,2,tsl_accuracy$ans)
 
 corr <- NULL
 corrt <- NULL
+trial <- NULL
+trialt <- NULL
 
-#Loop through and count the correct answer
-for (i in seq(from=1,to=length(vsl_accuracy$ans),by=1)) {corr<-append(corr,as.numeric(vsl_accuracy[i,]$ans==vsl_accuracy[i,]$key))}
+#Loop through, count the correct answer, and add trial number
+for (i in seq(from=1,to=length(vsl_accuracy$ans),by=1)){
+  corr<-append(corr,as.numeric(vsl_accuracy[i,]$ans==vsl_accuracy[i,]$key))
+}
+
+for(id in list_vsl_id){
+  for (i in seq(from=1,to=length(vsl_accuracy$ans[vsl_accuracy$subj==id]),by=1)){
+    trial <-append(trial,i)
+  }
+}
+
 vsl_accuracy$corr <- corr
+vsl_accuracy$trial <- trial
+vsl_accuracy$task <- "Visual"
+
 subj_corr <- NULL
-for (id in list_vsl_id) {subj_corr <- append(subj_corr,round(sum(vsl_accuracy$corr[vsl_accuracy$subj==id])/total_test_trial,digits=3))}
+for (id in list_vsl_id) {
+  subj_corr <- append(subj_corr,round(sum(vsl_accuracy$corr[vsl_accuracy$subj==id])/total_test_trial,digits=3))
+}
 vsl_acc_table <- data.frame(list_vsl_id,subj_corr,vsl_cond)
+vsl_acc_table$task <- "Visual"
+vsl_acc_table$group<-""
+vsl_acc_table[vsl_acc_table$list_vsl_id %in% DD,]$group = "Dyslexic"
+vsl_acc_table[vsl_acc_table$list_vsl_id %in% TYP,]$group = "Typical"
+colnames(vsl_acc_table)[1] = "subj"
+colnames(vsl_acc_table)[3] = "language"
 
-for (i in seq(from=1,to=length(tsl_accuracy$ans),by=1)) {corrt<-append(corrt,as.numeric(tsl_accuracy[i,]$ans==tsl_accuracy[i,]$key))}
+for (i in seq(from=1,to=length(tsl_accuracy$ans),by=1)){
+  corrt<-append(corrt,as.numeric(tsl_accuracy[i,]$ans==tsl_accuracy[i,]$key))
+}
+
+for(id in list_tsl_id){
+  for (i in seq(from=1,to=length(tsl_accuracy$ans[tsl_accuracy$subj==id]),by=1)){
+    trialt <-append(trialt,i)
+  }
+}
 tsl_accuracy$corr <- corrt
-subj_corrt <- NULL
-for (id in list_tsl_id) {subj_corrt <- append(subj_corrt,round(sum(tsl_accuracy$corr[tsl_accuracy$subj==id])/total_test_trial,digits=3))}
-tsl_acc_table <- data.frame(list_tsl_id,subj_corrt,tsl_cond)
+tsl_accuracy$trial <- trialt
+tsl_accuracy$task <- "Auditory"
 
-#Look into group performance between Dyl and Typ
+subj_corrt <- NULL
+for (id in list_tsl_id) {
+  subj_corrt <- append(subj_corrt,round(sum(tsl_accuracy$corr[tsl_accuracy$subj==id])/total_test_trial,digits=3))
+}
+tsl_acc_table <- data.frame(list_tsl_id,subj_corrt,tsl_cond)
+tsl_acc_table$task <- "Auditory"
+tsl_acc_table$group<-""
+tsl_acc_table[tsl_acc_table$list_tsl_id %in% DD,]$group = "Dyslexic"
+tsl_acc_table[tsl_acc_table$list_tsl_id %in% TYP,]$group = "Typical"
+colnames(tsl_acc_table)[1] = "subj"
+colnames(tsl_acc_table)[3] = "language"
+colnames(tsl_acc_table)[2] = "subj_corr"
+all_accuracy <- rbind(vsl_accuracy,tsl_accuracy)
+all_acc_table <- rbind(vsl_acc_table,tsl_acc_table)
+```
+## Accuracy Data Summary (mean +/- sd)
+```{r,echo=FALSE,warning=FALSE}
+data<-as_tibble(all_acc_table)
+data %>%
+  group_by(group,task) %>%
+  summarise(
+          count = n(),
+          accuracy = qwraps2::mean_sd(subj_corr)
+          )
+```
+##Look into group performance between Dyl and Typ
+### simple t test: both groups performed above chance for both tasks
+```{r,echo=FALSE,warning=FALSE}
 DD_acc_vsl <- NULL
 DD_acc_tsl <- NULL
 TYP_acc_vsl <- NULL
 TYP_acc_tsl <- NULL
 
 for(id in DD){
-  DD_acc_vsl<- append(DD_acc_vsl,vsl_acc_table$subj_corr[vsl_acc_table$list_vsl_id==id])
-  DD_acc_tsl<- append(DD_acc_tsl,tsl_acc_table$subj_corr[tsl_acc_table$list_tsl_id==id])
+  DD_acc_vsl<- append(DD_acc_vsl,vsl_acc_table$subj_corr[vsl_acc_table$subj==id])
+  DD_acc_tsl<- append(DD_acc_tsl,tsl_acc_table$subj_corr[tsl_acc_table$subj==id])
 }
 
 for(id in TYP){
-  TYP_acc_vsl<- append(TYP_acc_vsl,vsl_acc_table$subj_corr[vsl_acc_table$list_vsl_id==id])
-  TYP_acc_tsl<- append(TYP_acc_tsl,tsl_acc_table$subj_corr[tsl_acc_table$list_tsl_id==id])
+  TYP_acc_vsl<- append(TYP_acc_vsl,vsl_acc_table$subj_corr[vsl_acc_table$subj==id])
+  TYP_acc_tsl<- append(TYP_acc_tsl,tsl_acc_table$subj_corr[tsl_acc_table$subj==id])
 }
-mean_DD_vsl <- mean(DD_acc_vsl,na.rm=TRUE)
-mean_DD_tsl <- mean(DD_acc_tsl,na.rm=TRUE)
-mean_TYP_vsl <- mean(TYP_acc_vsl,na.rm=TRUE)
-mean_TYP_tsl <- mean(TYP_acc_tsl,na.rm=TRUE)
-DD_acc_col <- rbind(mean_DD_tsl,mean_DD_vsl)
-TYP_acc_col <- rbind(mean_TYP_tsl,mean_TYP_vsl)
-compare_acc_table <- cbind(DD_acc_col,TYP_acc_col)
-colnames(compare_acc_table) <- c("Dylexia", "Typical")
-rownames(compare_acc_table) <- c("TSL accuracy","VSL accuracy")
-
-
-
-
-#Simple t test
 
 t.test(DD_acc_vsl,mu=0.5,alternative = "greater")
 t.test(DD_acc_tsl,mu=0.5,alternative = "greater")
 
 t.test(TYP_acc_vsl,mu=0.5,alternative = "greater")
 t.test(TYP_acc_tsl,mu=0.5,alternative = "greater")
-
 ```
-
-
-```{r,echo=FALSE}
-
-##VSL Accuracy across subjects
-
-
-#print(kable(vsl_acc_table))
+### anova: marginal main effect of task and marginal interaction between task and group
+```{r,echo=FALSE,warning=FALSE}
+all_acc_table_complete = subset(all_acc_table,subj!="ABCD_1708")
+all_acc_table_complete = subset(all_acc_table_complete,subj!="ABCD_1727")
+model_acc <- aov(subj_corr~task*group+Error(subj/task),data=all_acc_table_complete)
+print(summary(model_acc))
 ```
-
-
+### generalized linear effect modeling: main effect of task (visual > auditory); main effect of group (TYP > DD); marginal interaction between task and group 
 ```{r,echo=FALSE}
-##TSL Accuracy across subjects
-
-#print(kable(tsl_acc_table))
+model_acc_lmer <- glmer(corr~task*group+(1+task|subj)+(1|trial),data=all_accuracy,family="binomial")
+print(summary(model_acc_lmer))
+```
+## plot the accuracy by group and task
+```{r,echo=FALSE}
+stat.test <- all_acc_table %>%
+  group_by(task) %>%
+  tukey_hsd(subj_corr~group)
+stat.test
+stat.test <- stat.test %>% add_xy_position(x = "group", fun = "mean_se")
+all_acc_table$group = as.factor(all_acc_table$group)
+ggbarplot(all_acc_table, x = "group", y = "subj_corr", fill = 
+            "group", add = "mean_se", facet.by = c("task")) +
+  facet_wrap(vars(task),scales="free")+
+  stat_pvalue_manual(stat.test, hide.ns = TRUE, tip.length = 0, step.increase = 0) +
+  scale_y_continuous(expand = expansion(mult = c(0.05, 0.15))) +
+  scale_fill_brewer(palette = 'Set1') +
+  ylab(label = '% Correct') +
+  xlab(label = 'Group')
+```
+## alternative plots
+```{r,echo=FALSE}
+ggplot() +
+  geom_bar(aes(x = group,y = subj_corr,fill = group),data=all_acc_table,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
+  theme_classic(base_size = 18.0) +
+  ylab(label = '% Correct') +
+  xlab(label = 'Group') +
+  #coord_cartesian(ylim = c(0.3,1)) +
+  geom_errorbar(aes(y = subj_corr, x = group),data=all_acc_table,size = 0.3,width = 0.2,fun.y = function(x) mean(x),fun.ymin = function(x) mean(x) - sd(x)/sqrt(length(x)),fun.ymax = function(x) mean(x) + sd(x)/sqrt(length(x)) ,stat = 'summary')+
+  geom_beeswarm(aes(x = group,y = subj_corr, colour = group),data=all_acc_table,dodge.width=0.9,cex=2.5) +
+  facet_wrap(task~.) +
+  scale_fill_brewer(palette = 'Set1') + 
+  scale_color_manual(values=cbbPalette)
 ```
 
 #A t-test to compare between Dylexia and Typical group
@@ -915,67 +1034,23 @@ t.test(DD_acc_tsl,TYP_acc_tsl)
 t.test(DD_acc_vsl,TYP_acc_vsl)
 ```
 
+## save output files into a wide format for individual difference analysis
 ```{r,echo=FALSE}
-# A line plot to compare mean accuracy of each group accross 32 trials
-
- index <- rep(1:total_test_trial,total_participant)
-indx <- c(1:total_test_trial)
-vsl_accuracy$index <- index
-tsl_accuracy$index <- index
-DD_vsl_point <- NULL
-TYP_vsl_point <- NULL
-DD_tsl_point <- NULL
-TYP_tsl_point <- NULL
-for (i in indx){DD_vsl_point <- append(DD_vsl_point,mean(vsl_accuracy$corr[vsl_accuracy$index==i & vsl_accuracy$cond=="DD"]))
-DD_tsl_point <- append(DD_tsl_point,mean(tsl_accuracy$corr[tsl_accuracy$index==i & tsl_accuracy$cond=="DD"]))
-TYP_tsl_point <- append(TYP_tsl_point,mean(tsl_accuracy$corr[tsl_accuracy$index==i & tsl_accuracy$cond=="TYP"]))
-TYP_vsl_point <- append(TYP_vsl_point,mean(vsl_accuracy$corr[vsl_accuracy$index==i & vsl_accuracy$cond=="TYP"]))}
-DDi <- rep("DD",total_test_trial)
-Ti <- rep("TYP",total_test_trial)
-dv <- cbind(DD_vsl_point,indx,DDi)
-tv <- cbind(TYP_vsl_point,indx,Ti)
-dt <- cbind(DD_tsl_point,indx,DDi)
-tt <- cbind(TYP_tsl_point,indx,Ti)
-vtable <- data.frame(rbind(dv,tv))
-ttable <- data.frame(rbind(dt,tt))
-
-#ggplot(data=vtable,aes(x=as.numeric(indx),y=as.numeric(paste(DD_vsl_point)), color=DDi,group=DDi),ylim=c(0,1)) + geom_point() + geom_line() + ggtitle("Accuracy accross trials in VSL") + xlab("Trial index")+ylab("Accuracy (%)") + scale_color_discrete(name="Group",labels=c("Dylexia","Typical"))
-#ttable <- data.frame(rbind(dt,tt))
-#ggplot(data=ttable,aes(x=as.numeric(indx),y=as.numeric(paste(DD_tsl_point)), color=DDi,group=DDi),ylim=c(0,1)) + geom_point() + geom_line() + ggtitle("Accuracy accross trials in TSL") + xlab("Trial index")+ylab("Accuracy (%)") + scale_color_discrete(name="Group",labels=c("Dylexia","Typical"))
+all_acc_wide=cast(all_acc_table,subj+group~task,value="subj_corr")
+colnames(all_acc_wide)[3]="aud_acc"
+colnames(all_acc_wide)[4]="vis_acc"
+all_slope_wide_slope_s=cast(all_subj_slope,subj~task,value="rt_slope_scale")
+colnames(all_slope_wide_slope_s)[2]="aud_slope_scale"
+colnames(all_slope_wide_slope_s)[3]="vis_slope_scale"
+all_slope_wide_rt=cast(all_subj_slope,subj~task,value="mean_rt")
+colnames(all_slope_wide_rt)[2]="aud_fam_rt"
+colnames(all_slope_wide_rt)[3]="vis_fam_rt"
+all_slope_wide_dprime=cast(all_subj_slope,subj~task,value="dprime")
+colnames(all_slope_wide_dprime)[2]="aud_fam_dprime"
+colnames(all_slope_wide_dprime)[3]="vis_fam_dprime"
+all_rt_wide = merge(all_slope_wide_slope_s,all_slope_wide_rt)
+all_rt_wide = merge(all_rt_wide,all_slope_wide_dprime)
+all_sl_wide = merge(all_acc_wide,all_rt_wide)
+write.csv(all_sl_wide,"/Users/zhenghanqi/Dropbox (MIT)/UDel/projects/collaboration/abcd/git/procedural-learning/sl_analysis/all_sl_wide.csv")
 ```
 
-#A box plot to compare the average accuracy between each group
-```{r,fig.width=10, fig.height=10, echo=FALSE}
-par(mfrow=c(2,2))
-boxplot(DD_vsl_point, main="Dylexia-VSL",col="deepskyblue4", pars=list(ylim=c(0.2,1)))
-boxplot(TYP_vsl_point, main="Typical-VSL",col="deepskyblue4", pars=list(ylim=c(0.2,1)))
-
-boxplot(DD_tsl_point, main="Dylexia-TSL",col="deepskyblue4", pars=list(ylim=c(0.2,1)))
-
-boxplot(TYP_vsl_point, main="Typical-TSL",col="deepskyblue4", pars=list(ylim=c(0.2,1)))
-
-ggplot() +
-	geom_bar(aes(x = Task,y = Accuracy,fill = Group),data=acc,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
-	ylab(label = 'Accuracy') +
-	#coord_cartesian(ylim = c(0.3,1)) +
-	geom_beeswarm(aes(x = factor(Task),y = Accuracy,colour = Group),data=acc,dodge.width=0.9,cex=2.5) +
-	scale_colour_grey(guide = guide_legend(),start = 0.0,end = 0.0) +
-scale_fill_manual(labels = c("Dylexia","Typical"),values = c("#b2182b", "#2166ac")) +	geom_hline(yintercept=0,linetype=2) +theme_classic(base_size = 20.0) + guides(color = FALSE) 
-
-ggplot(acc1, aes(x=Task, y = Accuracy, fill=Group)) + geom_bar(stat = "identity",position=position_dodge()) + geom_errorbar(aes(ymin=Accuracy-se,ymax=Accuracy+se),width=.1,size=.8,position=position_dodge(.9)) + ggtitle("Accuracy plot") + scale_fill_grey(guide = guide_legend(),start = 0.4,end = 0.8) + geom_beeswarm(aes(x = factor(Task),y = Accuracy,colour = Group),data=acc,dodge.width=1,cex=2.5) + theme_classic(base_size = 20.0) + scale_colour_grey(guide = guide_legend(),start = 0.0,end = 0.0) 
-# another way to plot
-levels(acc$Task) = c("ASL","VSL")
-acc$Task = factor(acc$Task,levels(acc$Task)[c(2,1)])
-levels(acc$Group) = c("Dyslexia","Typical")
-cbbPalette <- c("#000000","#000000")
-ggplot() +
-  geom_bar(aes(x = Task,y = Accuracy,fill = Group),data=acc,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
-  theme_classic(base_size = 20.0) +
-  ylab(label = 'Test Accuracy') +
-  coord_cartesian(ylim = c(0.3,1)) +
-  geom_beeswarm(aes(x = Task,y = Accuracy, colour = Group),data=acc,dodge.width=0.9,cex=2.5) +
-  scale_fill_brewer(palette = 'Set1') + 
-  scale_color_manual(values=cbbPalette) +
-  geom_hline(yintercept=0.5,linetype=2)
-
-```
