@@ -88,21 +88,42 @@ rp$trial <- as.factor(rp$trial)
 
 rp2<-rp%>%dplyr::group_by(PartID,Subgroup,trial)%>%
                          mutate(prop_on=On/(On+Off))
+ # left_join(d)
+
+# Check # of trials per each subject
+data_tmp4check <- aggregate(prop_on ~ PartID * Subgroup, FUN=NROW, data = rp2 )
+unique(data_tmp4check[data_tmp4check$trial != 16,])
+View(data_tmp4check)
+length(unique(d$PartID))
+data_tmp4check[data_tmp4check$trial !=16,1]
+
+hist(rp2$prop_on)
 ```
 
 ###Statstical Analysis by Trial
 
 ```{r, echo=FALSE,warning = FALSE}
 
-m1<-lm(prop_on~Subgroup*trial,
+m1<-lm(prop_on~Subgroup*as.factor(trial),
         data=rp2)
-anova(m1) 
+anova(m1) #sig group and trial. tried with age and sex, doesnt change the results
 lsmeans(m1, list(pairwise ~ Subgroup), adjust = "tukey")
 
 ```
 
 
-```{r, include=FALSE,warning = FALSE}
+##Extract Slope
+
+####how many polynomial terms?
+```{r, echo=FALSE}
+lm(prop_on ~ poly(trial, 6, raw = TRUE), data = rp2) %>%
+  summary()
+ggplot(rp2, aes(trial, prop_on) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ poly(x, 3, raw = TRUE))
+```
+
+```{r, echo=FALSE, include=FALSE}
 d_glm_fit_list <- vector(mode = "list", length = nrow(rp)*2)
 index <- 0
 abcd_ids=unique(rp2$PartID)
@@ -114,7 +135,7 @@ for (subj in abcd_ids) { #d_export is my list of subject
   # index <- index + 1
   #print(subj)
   d_subj <- filter(rp2, PartID==subj)
-  subj_model <- glm(On ~ trial, #complettion time(On/Off) ~trial
+  subj_model <- lm(formula=On ~ poly(trial,3,raw=TRUE), #complettion time(On/Off) ~trial
                     data = d_subj)
   b_list[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
   m_list[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
@@ -134,7 +155,7 @@ for (subj in abcd_ids) { #d_export is my list of subject
   # index <- index + 1
   #print(subj)
   d_subj <- filter(rp2, PartID==subj)
-  subj_model <- glm(Off ~ trial, 
+  subj_model <- lm(formula=Off ~ poly(trial,3,raw=TRUE), #complettion time(On/Off) ~trial
                     data = d_subj)
   b_list2[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
   m_list2[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
@@ -155,7 +176,7 @@ for (subj in abcd_ids) { #d_export is my list of subject
   # index <- index + 1
   #print(subj)
   d_subj <- filter(rp2, PartID==subj)
-  subj_model <- glm(prop_on ~ trial, #complettion time(On/Off) ~trial
+  subj_model <- lm(formula=prop_on ~ poly(trial,3,raw=TRUE), #complettion time(On/Off) ~trial
                     data = d_subj)
   b_list4[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
   m_list4[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
@@ -164,10 +185,16 @@ for (subj in abcd_ids) { #d_export is my list of subject
 
 #Creat a new Data Frame containing the slopes
 rp_data <- data.frame(PartID=abcd_ids,slopeOn = m_list, slopeOff = m_list2, slopeProp_On = m_list4)
-rp_data$slopeProp_On_t<-as.numeric(abs(rp_data$slopeProp_On))
-rp_data$slopeProp_On_t<-log10(rp_data$slopeProp_On) #transform slope
-
+rp_data$slopeProp_On_t<-as.numeric(rp_data$slopeProp_On)
 d_rp<-merge(d,rp_data)
+```
+
+
+
+```{r, echo=FALSE}
+hist(d_rp$slopeProp_On_t)
+d_rp<-d_rp%>%filter(slopeProp_On_t>0) #exclude neg slopes
+hist(d_rp$slopeProp_On_t)
 ```
 
 
@@ -251,19 +278,40 @@ for (i in 1:nrow(PL)) {
 
 mt$time <- as.numeric(mt$time) 
 mt$error <- as.numeric(mt$error)
-mt$trial <- as.factor(mt$trial)
+mt$trial <- as.numeric(mt$trial)
+```
+## QC
+```{r,include=FALSE}
+# Check # of trials per each subject
+data_tmp4check <- aggregate(error ~ PartID * Subgroup, FUN=NROW, data = mt )
+unique(data_tmp4check[data_tmp4check$trial != 10,])
+View(data_tmp4check)
+length(unique(d$PartID))
+data_tmp4check[data_tmp4check$trial !=10,1]
+
+# Outliers
+##NOT SURE IF SHOULD EXCLUDE OR NOT
+histogram(mt$error)
+histogram(mt$time)
+summary(mt)
+mt2<-mt%>%filter(time<200) #excluded 2
+length(unique(mt$PartID))
+length(unique(mt2$PartID))
+histogram(mt2$error)
+histogram(mt2$time)
+
 
 ```
 
+
 ##MT: Analysis
 ```{r, echo=FALSE,warning = FALSE}
-mt$trial<-as.factor(mt$trial)
-mt2<-na.omit(mt)
-m3<-lm(time~Subgroup*trial,
-        data=mt2)
-anova(m3) #trial is only one sig
 
-m4<-lm(error~Subgroup*trial,
+m3<-lm(time~Subgroup*as.factor(trial),
+        data=mt2)
+anova(m3) #trial+subgroup are significant
+
+m4<-lm(error~Subgroup*as.factor(trial),
         data=mt2)
 
 anova(m4)
@@ -321,7 +369,28 @@ ggplot(data = mtEPlot, aes(x=trial, y=meanE, color = Subgroup))+
 
 ##Slopes
 
+```{r, echo=FALSE}
+hist(mt$error)
+lm(error ~ poly(trial, 4, raw = TRUE), data = mt2) %>%
+  summary() #chose 1
+
+lm(time ~ poly(trial, 4, raw = TRUE), data = mt2) %>%
+  summary() #chose 3
+
+ggplot(mt2, aes(trial, error) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ x)
+```
+```{r, echo=FALSE}
+
+ggplot(mt2, aes(trial, time) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ poly(x, 3, raw = TRUE))
+```
+
+
 ### Extract slopes
+
 ```{r, echo=FALSE,warning = FALSE}
 d_glm_fit_list <- vector(mode = "list", length = nrow(rp)*2)
 index <- 0
@@ -345,7 +414,6 @@ m_list7 = c()
 
 
 ```{r, echo=FALSE,warning = FALSE}
-mt2<-na.omit(mt)
 d_glm_fit_list <- vector(mode = "list", length = nrow(rp)*2)
 index <- 0
 abcd_ids=unique(mt2$PartID)
@@ -355,7 +423,7 @@ m_list7 = c()
 for (subj in abcd_ids) { #d_export is my list of subject 
   #print(subj)
   d_subj <- dplyr::filter(mt2, PartID==subj)
-  subj_model <- glm(time ~ trial, #complettion time(On/Off) ~trial
+  subj_model <- lm(formula=time ~ poly(trial,4,raw=TRUE), #completion time
                     data = d_subj)
   b_list7[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
   m_list7[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
@@ -366,11 +434,10 @@ for (subj in abcd_ids) { #d_export is my list of subject
 #new data frame containing the mirror slopes
 mt_data <- cbind(PartID=abcd_ids,slope_me = m_list5, slope_mt = m_list7)
 mt_data<-as.data.frame(mt_data)
-mt_data$slope_me_t<-abs(as.numeric(mt_data$slope_me))
-mt_data$slope_me_t<-log10(mt_data$slope_me_t) #transform slope
-
-mt_data$slope_mt_t<-abs(as.numeric(mt_data$slope_mt))
-mt_data$slope_mt_t<-log10(mt_data$slope_mt_t) #transform slope
+mt_data$slope_mt<-as.numeric(mt_data$slope_mt)
+mt_data=mt_data%>%dplyr::filter(slope_me>-300)
+mt_data$slope_me<-log(abs(mt_data$slope_me)) #transform slope
+hist(mt_data$slope_me)
 
 d2<-merge(d, mt_data)
 ```
