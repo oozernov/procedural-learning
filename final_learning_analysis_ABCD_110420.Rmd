@@ -18,8 +18,7 @@ knitr::opts_chunk$set(echo = TRUE)
 #import packages 
 Packages <- c("dplyr", "stats", "psych", "ggplot2", "lme4", 
               "gridExtra", "dplyr","caret","tidyverse", "ggplot2",
-              "plyr","lmerTest","ggpubr","nlme","emmeans"
-)
+              "plyr","lmerTest","ggpubr","nlme","emmeans")
 
 lapply(Packages, library, character.only = TRUE)
 
@@ -116,8 +115,9 @@ lsmeans(m1, list(pairwise ~ Subgroup), adjust = "tukey")
 
 ####how many polynomial terms?
 ```{r, echo=FALSE}
-lm(prop_on ~ poly(trial, 6, raw = TRUE), data = rp2) %>%
-  summary()
+rp2$trial<-as.numeric(rp2$trial)
+m1<-lm(prop_on ~ poly(trial, 6, raw = TRUE), data = rp2)
+summary(m1)
 ggplot(rp2, aes(trial, prop_on) ) +
   geom_point() +
   stat_smooth(method = lm, formula = y ~ poly(x, 3, raw = TRUE))
@@ -294,7 +294,7 @@ data_tmp4check[data_tmp4check$trial !=10,1]
 histogram(mt$error)
 histogram(mt$time)
 summary(mt)
-mt2<-mt%>%filter(time<200) #excluded 2
+#mt2<-mt%>%filter(time<200) #excluded 2
 length(unique(mt$PartID))
 length(unique(mt2$PartID))
 histogram(mt2$error)
@@ -435,9 +435,9 @@ for (subj in abcd_ids) { #d_export is my list of subject
 mt_data <- cbind(PartID=abcd_ids,slope_me = m_list5, slope_mt = m_list7)
 mt_data<-as.data.frame(mt_data)
 mt_data$slope_mt<-as.numeric(mt_data$slope_mt)
-mt_data=mt_data%>%dplyr::filter(slope_me>-300)
-mt_data$slope_me<-log(abs(mt_data$slope_me)) #transform slope
-hist(mt_data$slope_me)
+#mt_data=mt_data%>%dplyr::filter(slope_me>-300)
+mt_data$slope_me<-log(abs(mt_data$slope_mt)) #transform slope
+hist(mt_data$slope_mt)
 
 d2<-merge(d, mt_data)
 ```
@@ -524,7 +524,7 @@ multi.group_me <-
          paired = FALSE
   )
 
-plot(multi.group_me, palette=c("blue","red"),rawplot.ylabel = "MT Time Slope")
+plot(multi.group_me, palette=c("blue","red"),rawplot.ylabel = "MT Errors Slope")
 
 
 ```
@@ -605,7 +605,7 @@ anova(m7)
 ###Cross-task correlations
 ```{r,include=FALSE,warning = FALSE}
 source("corstars_function.R")
-task_data<-d_all%>%select(kbit_ss_2,gort_ori_ss_2,ctopp_nonword_raw_2,ctopp_elision_raw_2,ctopp_blending_raw_2,wais_dsb_ss_2,slopeProp_On_t,slope_mt_t,slope_me_t,vis_slope_scale,aud_slope_scale,quicksin_snr_loss_2)
+task_data<-d_all%>%select(kbit_ss_2,wrmt_id_ss_2,wrmt_wa_ss_2,ctopp_nonword_raw_2,ctopp_elision_raw_2,ctopp_blending_raw_2,wais_dsb_ss_2,slopeProp_On_t,slope_mt_t,slope_me_t,vis_slope_scale,aud_slope_scale,quicksin_snr_loss_2)
 corstars(task_data,method="pearson")#you need to run the function first
 ```
 ```{r, echo=FALSE}
