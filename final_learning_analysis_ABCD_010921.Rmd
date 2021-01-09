@@ -13,8 +13,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-```{r Clean and organize, include=FALSE,warning = FALSE}
-# Clearn and organize data
+```{r, include=FALSE,warning = FALSE,error=TRUE}
+# Clean and organize data
 #import packages 
 Packages <- c("dplyr", "stats", "psych", "ggplot2", "lme4", 
               "gridExtra", "dplyr","caret","tidyverse", "ggplot2",
@@ -185,16 +185,16 @@ for (subj in abcd_ids) { #d_export is my list of subject
 
 #Creat a new Data Frame containing the slopes
 rp_data <- data.frame(PartID=abcd_ids,slopeOn = m_list, slopeOff = m_list2, slopeProp_On = m_list4)
-rp_data$slopeProp_On_t<-as.numeric(rp_data$slopeProp_On)
+rp_data$slopeProp_On<-as.numeric(rp_data$slopeProp_On)
 d_rp<-merge(d,rp_data)
 ```
 
 
 
 ```{r, echo=FALSE}
-hist(d_rp$slopeProp_On_t)
-d_rp<-d_rp%>%filter(slopeProp_On_t>0) #exclude neg slopes
-hist(d_rp$slopeProp_On_t)
+hist(d_rp$slopeProp_On)
+#d_rp<-d_rp%>%filter(slopeProp_On>0) #exclude neg slopes
+#hist(d_rp$slopeProp_On)
 ```
 
 
@@ -227,8 +227,8 @@ ggplot(data = rpPlot, aes(x=trial, y=mean, color = Subgroup))+
 
 ###Analysis
 ```{r, echo=FALSE,warning = FALSE}
-t.test(d_rp$slopeProp_On_t~d_rp$Subgroup)
-m2<-lm(slopeProp_On_t~background_age+background_sex+Subgroup, data=d_rp)
+t.test(d_rp$slopeProp_On~d_rp$Subgroup)
+m2<-lm(slopeProp_On~background_age+background_sex+as.factor(Subgroup), data=d_rp)
 anova(m2)
 lsmeans(m2, list(pairwise ~ Subgroup), adjust = "tukey")
 
@@ -236,11 +236,11 @@ lsmeans(m2, list(pairwise ~ Subgroup), adjust = "tukey")
 
 ###Slope Effects
 ```{r, echo=FALSE,warning = FALSE}
-plot_rp_slope<-d_rp%>%dplyr::select('PartID',"Subgroup","slopeProp_On_t")
+plot_rp_slope<-d_rp%>%dplyr::select('PartID',"Subgroup","slopeProp_On")
 plot_rp_slope<-na.omit(plot_rp_slope)
 rp_slope = plot_rp_slope %>%
   dplyr::group_by(PartID, Subgroup) %>%
-  dplyr::summarise(mean = mean(slopeProp_On_t, na.rm = T))
+  dplyr::summarise(mean = mean(slopeProp_On, na.rm = T))
 
 multi.group3 <- 
   rp_slope %>%
@@ -294,8 +294,8 @@ data_tmp4check[data_tmp4check$trial !=10,1]
 histogram(mt$error)
 histogram(mt$time)
 summary(mt)
-#mt2<-mt%>%filter(time<200) #excluded 2
-mt2<-mt #place holder while deciding on outliers
+mt2<-mt%>%filter(time<200) #excluded 2
+#mt2<-mt #place holder while deciding on outliers
 length(unique(mt$PartID))
 length(unique(mt2$PartID))
 histogram(mt2$error)
@@ -392,10 +392,32 @@ ggplot(mt2, aes(trial, time) ) +
 
 ### Extract slopes
 
+#####Time slope
+```{r, echo=FALSE,warning = FALSE,error=TRUE}
+
+mt2$trial<-as.numeric(mt2$trial)
+d_glm_fit_list <- vector(mode = "list", length = nrow(mt2)*2)
+index <- 0
+abcd_ids=unique(mt2$PartID)
+b_list7=c()
+m_list7 = c()
+
+for (subj in abcd_ids) { 
+  #print(subj)
+  d_subj <- dplyr::filter(mt2, PartID==subj)
+  subj_model <- lm(formula=time ~ poly(trial,4,raw=TRUE), #completion time
+                    data = d_subj,na.action = 'na.omit')
+  b_list7[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
+  m_list7[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
+  
+}
+
+```
+##Error slope
 ```{r, echo=FALSE,warning = FALSE}
 
 #Error slopes
-d_glm_fit_list <- vector(mode = "list", length = nrow(rp)*2)
+d_glm_fit_list <- vector(mode = "list", length = nrow(mt2)*2)
 index <- 0
 abcd_ids=unique(mt2$PartID)
 b_list5=c()
@@ -410,75 +432,24 @@ for (subj in abcd_ids) {
   m_list5[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
   
 }
-b_list7=c()
-m_list7 = c()
-
-```
-
-
-```{r, echo=FALSE,warning = FALSE}
-#Time slopes
-mt2$trial<-as.numeric(mt2$trial)
-d_glm_fit_list <- vector(mode = "list", length = nrow(mt2)*2)
-index <- 0
-abcd_ids=unique(mt2$PartID)
-b_list7=c()
-m_list7 = c()
-
-for (subj in abcd_ids) { 
-  #print(subj)
-  d_subj <- dplyr::filter(mt2, PartID==subj)
-  subj_model <- lm(formula=time ~ poly(trial,4,raw=TRUE), #completion time
-                    data = d_subj)
-  b_list7[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
-  m_list7[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
-  
-}
-
 
 #new data frame containing the mirror slopes
 mt_data <- cbind(PartID=abcd_ids,slope_me = m_list5, slope_mt = m_list7)
 mt_data<-as.data.frame(mt_data)
-mt_data$slope_mt<-as.numeric(mt_data$slope_mt)
-#mt_data=mt_data%>%dplyr::filter(slope_me>-300)
-mt_data$slope_me<-log(abs(mt_data$slope_mt)) #transform slope
-hist(mt_data$slope_mt)
-
-d2<-merge(d, mt_data)
-```
-
-```{r, echo=FALSE,warning = FALSE}
-
-d_glm_fit_list <- vector(mode = "list", length = nrow(rp)*2)
-index <- 0
-abcd_ids=unique(mt2$PartID)
-b_list7=c()
-m_list7 = c()
-
-for (subj in abcd_ids) { #d_export is my list of subject 
-  #print(subj)
-  d_subj <- dplyr::filter(mt2, PartID==subj)
-  subj_model <- glm(time ~ trial, #complettion time(On/Off) ~trial
-                    data = d_subj,na.action = 'na.omit')
-  b_list7[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
-  m_list7[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
-  
-}
-
-#new data frame containing the mirror slopes
-mt_data <- cbind(PartID=abcd_ids,slope_me = m_list5, slope_mt = m_list7)
-mt_data<-as.data.frame(mt_data)
-mt_data$slope_me_t<-abs(as.numeric(mt_data$slope_me))
-mt_data$slope_me_t<-log10(mt_data$slope_me_t+1) #transform slope
+mt_data$slope_me<-as.numeric(mt_data$slope_me)
+mt_data$slope_me<-log10(abs(mt_data$slope_me)) #transform slope
 #mt_data<-mt_data%>%filter(slope_me_t!="-Inf") #transform slope
 
-mt_data$slope_mt_t<-abs(as.numeric(mt_data$slope_mt))
-mt_data$slope_mt_t<-log10(mt_data$slope_mt_t) #transform slope
+mt_data$slope_mt<-as.numeric(mt_data$slope_mt)
+#mt_data=mt_data%>%dplyr::filter(slope_me>-300) #exclude outlier??
+mt_data$slope_mt<-log10(abs(mt_data$slope_mt)) #transform slope
+hist(mt_data$slope_mt)
+d2<-merge(d, mt_data)
 
 d_3 <- d %>%
    select("PartID","Subgroup", "background_age","background_sex")
 
-d_mt <- left_join(mt_data, d_3, by = "PartID")
+d_mt <- dplyr::left_join(mt_data, d_3, by = "PartID")
 d2<-merge(d_rp,d_mt)
 
 ```
@@ -488,9 +459,9 @@ d2<-merge(d_rp,d_mt)
 #t.test(d_mt$slope_mt_t~d_mt$Subgroup)
 #t.test(d_mt$slope_me_t~d_mt$Subgroup)
 
-m3<-lm(slope_mt_t~background_age+background_sex+Subgroup, data=d_mt,na.action = na.exclude)
+m3<-lm(slope_mt~background_age+background_sex+as.factor(Subgroup), data=d_mt,na.action = na.exclude)
 anova(m3)
-m4<-lm(slope_me_t~background_age+background_sex+Subgroup, data=d_mt,na.action = na.exclude)
+m4<-lm(slope_me~background_age+background_sex+as.factor(Subgroup), data=d_mt,na.action = na.exclude)
 anova(m4) #sig group difference
 lsmeans(m4, list(pairwise ~ Subgroup), adjust = "tukey")
 
@@ -498,11 +469,12 @@ lsmeans(m4, list(pairwise ~ Subgroup), adjust = "tukey")
 ## MT: Plot Slope Effects
 
 ```{r, echo=FALSE,warning = FALSE}
-mt_slope<-d2%>%dplyr::select("PartID","Subgroup","slope_mt_t")
+mt_slope<-d2%>%dplyr::select("PartID","Subgroup","slope_mt")
+mt_slope<-na.omit(mt_slope)
 
 mt_slope = mt_slope %>%
   dplyr::group_by(PartID, Subgroup) %>%
-  dplyr::summarise(mean = mean(slope_mt_t, na.rm = T))
+  dplyr::summarise(mean = mean(slope_mt, na.rm = T))
 
 multi.group_mt <- 
  mt_slope %>%
@@ -516,11 +488,11 @@ plot(multi.group_mt, palette=c("blue","red"),rawplot.ylabel = "MT Time Slope")
 
 ```
 ```{r, echo=FALSE,warning = FALSE}
-me_slope<-d2%>%dplyr::select("PartID","Subgroup","slope_me_t")
+me_slope<-d2%>%dplyr::select("PartID","Subgroup","slope_me")
 
 me_slope = me_slope %>%
   dplyr::group_by(PartID, Subgroup) %>%
-  dplyr::summarise(mean = mean(slope_me_t, na.rm = T))
+  dplyr::summarise(mean = mean(slope_me, na.rm = T))
 
 multi.group_me <- 
  me_slope %>%
@@ -600,17 +572,17 @@ plot(multi.group_vsl, palette=c("blue","red"),rawplot.ylabel = "VSL Slope")
 ```
 ##RT Slope
 ```{r,echo=FALSE,warning = FALSE}
-m6<-lm(aud_fam_rt~background_age+background_sex+Subgroup, data=d_all,na.action = na.exclude)
+m6<-lm(aud_fam_rt~background_age+background_sex+as.factor(Subgroup), data=d_all,na.action = na.exclude)
 anova(m6) 
 
-m7<-lm(vis_fam_rt~background_age+background_sex+Subgroup, data=d_all,na.action = na.exclude)
+m7<-lm(vis_fam_rt~background_age+background_sex+as.factor(Subgroup), data=d_all,na.action = na.exclude)
 anova(m7) 
 ```
 
 ###Cross-task correlations
 ```{r,include=FALSE,warning = FALSE}
 source("corstars_function.R")
-task_data<-d_all%>%select(kbit_ss_2,wrmt_id_ss_2,wrmt_wa_ss_2,ctopp_nonword_raw_2,ctopp_elision_raw_2,ctopp_blending_raw_2,wais_dsb_ss_2,slopeProp_On_t,slope_mt_t,slope_me_t,vis_slope_scale,aud_slope_scale,quicksin_snr_loss_2)
+task_data<-d_all%>%select(kbit_ss_2,wrmt_id_ss_2,wrmt_wa_ss_2,ctopp_nonword_raw_2,ctopp_elision_raw_2,ctopp_blending_raw_2,wais_dsb_ss_2,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,quicksin_snr_loss_2)
 corstars(task_data,method="pearson")#you need to run the function first
 ```
 ```{r, echo=FALSE}
