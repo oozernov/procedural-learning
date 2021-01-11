@@ -142,8 +142,9 @@ rp2$fitted_prop_on = fitted(m.1)
 
 ####Extract indiviudal slope
 ```{r, echo=FALSE}
-lm(prop_on ~ poly(trial, 6, raw = TRUE), data = rp2) %>%
-  summary()
+rp2$trial<-as.numeric(rp2$trial)
+m1<-lm(prop_on ~ poly(trial, 6, raw = TRUE), data = rp2)
+summary(m1)
 ggplot(rp2, aes(trial, prop_on) ) +
   geom_point() +
   stat_smooth(method = lm, formula = y ~ poly(x, 3, raw = TRUE))
@@ -333,6 +334,7 @@ histogram(mt$error)
 histogram(mt$time)
 summary(mt)
 mt2<-mt%>%filter(time<200) #excluded 2
+mt2<-mt #place holder while deciding on outliers
 length(unique(mt$PartID))
 length(unique(mt2$PartID))
 histogram(mt2$error)
@@ -494,13 +496,15 @@ ggplot(mt2, aes(trial, error, color=Subgroup))+
 ### Extract slopes
 
 ```{r, echo=FALSE,warning = FALSE}
+
+#Error slopes
 d_glm_fit_list <- vector(mode = "list", length = nrow(rp)*2)
 index <- 0
 abcd_ids=unique(mt2$PartID)
 b_list5=c()
 m_list5 = c()
 
-for (subj in abcd_ids) { #d_export is my list of subject 
+for (subj in abcd_ids) {
  # print(subj)
   d_subj <- filter(mt, PartID==subj)
   subj_model <- glm(error ~ trial, #errors
