@@ -96,23 +96,55 @@ unique(data_tmp4check[data_tmp4check$trial != 16,])
 View(data_tmp4check)
 length(unique(d$PartID))
 data_tmp4check[data_tmp4check$trial !=16,1]
-
 hist(rp2$prop_on)
 ```
 
-###Statstical Analysis by Trial
+###Statstical Analysis by Trial: ZQ notes: I think it makes more sense to treat "trial" as a continuous variable than a factor. No group x trial interaction
 
 ```{r, echo=FALSE,warning = FALSE}
-
 m1<-lm(prop_on~Subgroup*as.factor(trial),
         data=rp2)
 anova(m1) #sig group and trial. tried with age and sex, doesnt change the results
 lsmeans(m1, list(pairwise ~ Subgroup), adjust = "tukey")
-
+```
+#### linear regression: treating trial as a continuous variable (no group x trial interaction)
+```{r, echo=FALSE,warning = FALSE}
+rp2$PartID = as.factor(rp2$PartID)
+rp2$Subgroup = as.factor(rp2$Subgroup)
+rp2$trial = as.numeric(rp2$trial)
+m1<-lm(prop_on~Subgroup*trial,
+        data=rp2)
+anova(m1)
+```
+#### linear mixed-effect modeling: treating trial as a continuous variable
+```{r, echo=FALSE,warning = FALSE}
+library(lmerTest)
+lmerrp <- lmer(prop_on~Subgroup*trial + (1+trial|PartID),data=rp2)
+print(summary(lmerrp))
 ```
 
-
 ##Extract Slope
+### growth curve analysis - ZQ note: the growth curve analyses suggested that the two groups are significantly different on the quadratic terms
+```{r, echo=FALSE,warning = FALSE}
+temp = complete.cases(rp2)
+rp2 = rp2[temp,]
+s <- poly(unique(rp2$trial),2)
+rp2[,paste("otrial",1:2,sep="")] <-s[rp2$trial,1:2]
+summary(rp2)
+m.base <- lmer(prop_on ~(otrial1+otrial2)+(otrial1+otrial2 | PartID),data=rp2,REML=FALSE)
+m.0 <- lmer(prop_on ~(otrial1+otrial2)+ Subgroup + (otrial1+otrial2 | PartID),data=rp2,REML=FALSE)
+m.1 <- lmer(prop_on ~(otrial1+otrial2)*Subgroup + (otrial1+otrial2 | PartID),data=rp2,REML=FALSE)
+anova(m.base,m.0,m.1)
+summary(m.1)
+```
+### plot growth curve
+```{r, echo=FALSE,warning = FALSE}
+rp2$fitted_prop_on = fitted(m.1)
+ggplot(rp2, aes(trial, prop_on, color=Subgroup))+
+stat_summary(fun.data=mean_se, geom="pointrange") +
+theme_classic() +
+stat_summary(aes(y=fitted_prop_on),fun.y=mean, geom="line")
+```
 
 ####how many polynomial terms?
 ```{r, echo=FALSE}
@@ -170,6 +202,7 @@ index <- 0
 abcd_ids=unique(rp$PartID)
 b_list4=c()
 m_list4 = c()
+poly_list = c()
 
 for (subj in abcd_ids) { #d_export is my list of subject 
   #for (a in c("d", "b")) 
@@ -180,11 +213,11 @@ for (subj in abcd_ids) { #d_export is my list of subject
                     data = d_subj)
   b_list4[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
   m_list4[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
-  
+  poly_list[subj] <- as.numeric(subj_model$coefficients[3]) # coefficient quadratic term
 }
 
 #Creat a new Data Frame containing the slopes
-rp_data <- data.frame(PartID=abcd_ids,slopeOn = m_list, slopeOff = m_list2, slopeProp_On = m_list4)
+rp_data <- data.frame(PartID=abcd_ids,slopeOn = m_list, slopeOff = m_list2, slopeProp_On = m_list4, quad_slopePropOn = poly_list)
 rp_data$slopeProp_On_t<-as.numeric(rp_data$slopeProp_On)
 d_rp<-merge(d,rp_data)
 ```
