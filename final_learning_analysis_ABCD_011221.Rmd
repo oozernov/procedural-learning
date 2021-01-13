@@ -114,33 +114,33 @@ hist(rp2$prop_on)
 ```{r, echo=FALSE,warning = FALSE}
 rp2$PartID = as.factor(rp2$PartID)
 rp2$Subgroup = as.factor(rp2$Subgroup)
-rp2$trial = as.numeric(as.character(rp2$trial)) # but then there is no learning effect?
 m1<-lm(prop_on~Subgroup*trial,
         data=rp2) 
-summary(m1) #sig group and trial. tried with age and sex, doesnt change the results
-lsmeans(m1, list(pairwise ~ Subgroup|trial), adjust = "tukey")
-
+summary(m1) #sig effect of trial and significant interaction between trial and group: DD learn faster!
+rp2_age_gender_iq = merge(rp2,d[,c(1,3,4,6)],all.x=TRUE)
+m2<-lm(prop_on~Subgroup*trial+background_age+background_sex+kbit_ss,
+        data=rp2_age_gender_iq) #after controlling for age, sex, and iq, the results remain the same
+summary(m2)
+#lsmeans(m1, list(pairwise ~ Subgroup|trial), adjust = "tukey") # ZQ notes: I am not sure what lsmeans does here, as you are no longer treating trial as a factor.
 ```
 
-###linear mixed-effect modeling: treating trial as a continuous variable
-####OOP: i added model testing here. I would include Subject as random effects, but not trials.
+###linear mixed-effect modeling: treating trial as a continuous variable: marginal group differences (lmerrp2)
 ```{r, echo=FALSE,warning = FALSE}
-# library(lmerTest)
-# #trial is not a sig random effect
-# lmerrp1 <- lmer(prop_on~Subgroup*trial + (1|PartID),data=rp2)
-# lmerrp2 <- lmer(prop_on~Subgroup*trial + (1+trial|PartID),data=rp2)
-# anova(lmerrp1,lmerrp2)
-# 
-# #Subj is a sig random effect
-# lmerrp3 <- lmer(prop_on~trial + (1|PartID),data=rp2)
-# lmerrp4 <- lmer(prop_on~Subgroup*trial + (1+trial|PartID),data=rp2)
-# anova(lmerrp3,lmerrp4)
-# 
-# print(summary(lmerrp)) #OOP:why differ when anova(model)
+library(lmerTest)
+#trial is not a sig random effect
+lmerrp1 <- lmer(prop_on~Subgroup*trial + (1|PartID),data=rp2)
+lmerrp2 <- lmer(prop_on~Subgroup*trial + (1+trial|PartID),data=rp2)
+anova(lmerrp1,lmerrp2) #ZQ notes: actually I see model comparison suggesting that trial as a random slope makes a significant difference in the model fit.
+summary(lmerrp2)
+#controlling for age, sex, and iq
+lmerrp1 <- lmer(prop_on~Subgroup*trial +background_age+background_sex+kbit_ss + (1|PartID),data=rp2_age_gender_iq)
+lmerrp2 <- lmer(prop_on~Subgroup*trial +background_age+background_sex+kbit_ss + (1+trial|PartID),data=rp2_age_gender_iq)
+anova(lmerrp1,lmerrp2)
+summary(lmerrp2)
 ```
 
 ##Extract Slope
-####growth curve analysis - ZQ note: the growth curve analyses suggested that the two groups are significantly different on the quadratic terms
+####growth curve analysis
 ```{r, echo=FALSE,warning = FALSE,include=FALSE}
 temp = complete.cases(rp2)
 rp2 = rp2[temp,]
@@ -152,11 +152,10 @@ m.0 <- lmer(prop_on ~(otrial1+otrial2)+ Subgroup + (otrial1+otrial2 | PartID),da
 m.1 <- lmer(prop_on ~(otrial1+otrial2)*Subgroup + (otrial1+otrial2 | PartID),data=rp2,REML=FALSE)
 anova(m.base,m.0,m.1)
 summary(m.1)
-rp2$fitted_prop_on = fitted(m.1)
+rp2$fitted_prop_on = fitted(m.1)  # ZQ note: the growth curve analyses suggested that the two groups are marginally different on the linear term (similar as the analysis above). It is perhaps not necessary to fit a curve. I agree that the linear estimate is pretty good.
 ```
 
 ####Extract indiviudal slope
-####OOP:Looks like the slopes are linear now
 ```{r, echo=FALSE}
 # rp2$trial<-as.numeric(as.character(rp2$trial))
 # m1<-lm(prop_on ~ poly(trial, 6, raw = TRUE), data = rp2) #determine how many terms
@@ -213,7 +212,6 @@ index <- 0
 abcd_ids=unique(rp$PartID)
 b_list4=c()
 m_list4 = c()
-poly_list = c()
 
 for (subj in abcd_ids) { #d_export is my list of subject 
   #for (a in c("d", "b")) 
@@ -228,8 +226,7 @@ for (subj in abcd_ids) { #d_export is my list of subject
 
 #Creat a new Data Frame containing the slopes
 rp_data <- data.frame(PartID=abcd_ids,slopeOn = m_list, slopeOff = m_list2, slopeProp_On = m_list4)
-rp_data$slopeProp_On<-as.numeric(rp_data$slopeProp_On)
-d_rp<-merge(d,rp_data)
+d_rp<-merge(d,rp_data) # the two groups are significantly different in IQ (p = 0.04)
 ```
 
 ```{r, echo=FALSE}
@@ -280,12 +277,11 @@ ggplot(rp2, aes(trial, prop_on, color=Subgroup))+
   theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
 ```
 
-###Slope Analysis- No significant effects for RP slopes
+### ANCOVA on individual slope - marginal group effect
 ```{r, echo=FALSE,warning = FALSE}
-m2<-lm(slopeProp_On~background_age+background_sex+Subgroup, data=d_rp)
+m2<-lm(slopeProp_On~kbit_ss+Subgroup, data=d_rp) # ZQ notes: I added kbit_ss here because the two groups are not significantly different on age/sex, but only on IQ.
 anova(m2)
 lsmeans(m2, list(pairwise ~ Subgroup), adjust = "tukey")
-
 ```
 
 ###Slope Effects
@@ -301,10 +297,10 @@ multi.group3 <-
   dabestr::dabest(Subgroup,mean, 
          idx = list(c("TYP",'DD')),
          paired = FALSE)
-plot(multi.group3, palette=c("blue","red"),rawplot.ylabel = "RP Prop On Slope")
+plot(multi.group3, palette=c("blue","red"),rawplot.ylabel = "RP Prop On Slope") # ZQ notes: on my computer, this plot does not work.
 ```
 
-# Mirror Tracing
+# Mirror Tracing (No Group Difference)
 
 
 ```{r, include=FALSE,warning = FALSE}
@@ -358,25 +354,31 @@ histogram(mt2$time)
 ```{r, echo=FALSE,warning = FALSE}
 m3<-lm(time~Subgroup*trial,
         data=mt2)
-summary(m3) #trial+subgroup are significant
-lsmeans(m3, list(pairwise ~ Subgroup|trial), adjust = "tukey")
+summary(m3) #trial is significant
+#lsmeans(m3, list(pairwise ~ Subgroup|trial), adjust = "tukey")
 
 
 m4<-lm(error~Subgroup*trial,
         data=mt2)
 
-anova(m4)
-lsmeans(m4, list(pairwise ~ Subgroup|trial), adjust = "tukey")
+anova(m4) #trial is significant
+#lsmeans(m4, list(pairwise ~ Subgroup|trial), adjust = "tukey")
 
+mt2_age_gender_iq = merge(mt2,d[,c(1,3,4,6)],all.x=TRUE)
+m3<-lm(time~Subgroup*trial+background_age+background_sex+kbit_ss,
+        data=mt2_age_gender_iq) #after controlling for age, sex, and iq, the results remain the same: main effect of trial, but no effect of group
+summary(m3)
+m4<-lm(error~Subgroup*trial+background_age+background_sex+kbit_ss,
+        data=mt2_age_gender_iq) #after controlling for age, sex, and iq, the results remain the same: main effect of trial, but no effect of group
+summary(m4)
 ```
-
+## linear mixed modeling: main effect of trial, no effect of subgroups
 ```{r, echo=FALSE,warning = FALSE}
 lmerm1<-lmer(time~Subgroup*trial+(1+trial|PartID),
         data=mt2)
 summary(lmerm1)
 ```
 
-####Need to decide on whether we want lme models
 ```{r, echo=FALSE,warning = FALSE}
 lmerm2<-lmer(error~Subgroup*trial+(1+trial|PartID),
         data=mt2)
@@ -432,8 +434,7 @@ ggplot(data = mtEPlot, aes(x=trial, y=meanE, color = Subgroup))+
 ```
 
 ##Mirror Tracing Slopes
-### growth curve analysis suggested the two groups are signficiantly different on quardratic terms
-#### completion time
+#### growth curve analysis on completion time : no group effect
 ```{r, echo=FALSE}
 temp = complete.cases(mt2)
 mt2 = mt2[temp,]
@@ -447,7 +448,7 @@ anova(m.base,m.0,m.1)
 summary(m.1)
 mt2$fitted_time=fitted(m.1)
 ```
-#### errors
+#### growth curve analysis on error: no group effect
 ```{r, echo=FALSE}
 m.base <- lmer(error ~(otrial1+otrial2)+(otrial1+otrial2 | PartID),data=mt2,REML=FALSE)
 m.0 <- lmer(error ~(otrial1+otrial2)+ Subgroup + (otrial1+otrial2 | PartID),data=mt2,REML=FALSE)
@@ -579,18 +580,19 @@ d_3 <- d %>%
    select("PartID","Subgroup", "background_age","background_sex")
 
 d_mt <- left_join(mt_data, d_3, by = "PartID")
-d2<-merge(d_rp,d_mt)
+d2<-merge(d_rp,d_mt) # ZQ notes: the two groups are significantly different on IQ
+table(d2$Subgroup)
 ```
 
-###MT: Slope Analysis
+###MT: ANCOVA controlling for age, sex, and kbit on individual subject's Slope
 ```{r, echo=FALSE,warning = FALSE}
 #t.test(d_mt$slope_mt_t~d_mt$Subgroup)
 #t.test(d_mt$slope_me_t~d_mt$Subgroup)
 
-m3<-lm(slope_mt_t~background_age+background_sex+Subgroup, data=d_mt,na.action = na.exclude)
+m3<-lm(slope_mt_t~background_age+background_sex+kbit_ss+Subgroup, data=d2,na.action = na.exclude)
 anova(m3)
-m4<-lm(slope_me_t~background_age+background_sex+Subgroup, data=d_mt,na.action = na.exclude)
-anova(m4) #sig group difference
+m4<-lm(slope_me_t~background_age+background_sex+kbit_ss+Subgroup, data=d2,na.action = na.exclude)
+anova(m4)
 lsmeans(m4, list(pairwise ~ Subgroup), adjust = "tukey")
 
 ```
@@ -642,8 +644,8 @@ table(SL$group)
 
 ## Slope analyses (ZQ notes: the group difference analysis should refer to abcd_sl_analysis.pdf)
 ```{r,echo=FALSE,warning = FALSE}
-m5<-lm(aud_slope_scale~background_age+background_sex+Subgroup, data=d_all,na.action = na.exclude)
-anova(m5) #sig group difference
+m5<-lm(aud_slope_scale~Subgroup, data=d_all,na.action = na.exclude)
+anova(m5)
 ```
 
 ##ASL Slope Effects (ZQ notes: the group difference analysis should refer to abcd_sl_analysis.pdf)
@@ -670,7 +672,7 @@ plot(multi.group_asl, palette=c("blue","red"),rawplot.ylabel = "ASL Time Slope")
 
 ```
 
-##VSL Slope Analysis (ZQ notes: the group difference analysis should refer to abcd_sl_analysis.pdf)
+##VSL Slope Analysis (ZQ notes: the group difference analysis should refer to abcd_sl_analysis.pdf, both the linear models and the lmer models are available with trials entered as continuous variables)
 ```{r,echo=FALSE,warning = FALSE}
 m6<-lm(vis_slope_scale~background_age+background_sex+Subgroup, data=d_all,na.action = na.exclude)
 anova(m6) #sig group difference
@@ -709,9 +711,9 @@ anova(m7)
 ```{r,include=FALSE,warning = FALSE}
 d_all_dys = subset(d_all,Subgroup == "DD")
 d_all_typ = subset(d_all,Subgroup == "TYP")
-task_data<-d_all%>%select(kbit_ss_2,gort_ori_ss_2,ctopp_nonword_raw_2,ctopp_elision_raw_2,ctopp_blending_raw_2,wais_dsb_ss_2,slopeProp_On,slope_mt_t,slope_me_t,vis_slope_scale,aud_slope_scale,quicksin_snr_loss_2)
-task_data_dys<-d_all_dys%>%select(wrmt_id_ss_2,wrmt_wa_ss_2,towre_sw_ss_2,towre_pde_ss_2, slopeProp_On, slope_mt,slope_me,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)
-task_data_typ<-d_all_typ%>%select(wrmt_id_ss_2,wrmt_wa_ss_2,towre_sw_ss_2,towre_pde_ss_2, slopeProp_On,slope_mt,slope_me,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)
+task_data<-d_all%>%select(kbit_ss_2,gort_ori_ss_2,ctopp_nonword_raw_2,ctopp_elision_raw_2,ctopp_blending_raw_2,wais_dsb_ss_2,slopeProp_On,slope_mt_t,slope_me_t,vis_slope_scale,aud_slope_scale,,vis_acc,aud_acc,quicksin_snr_loss_2)
+task_data_dys<-d_all_dys%>%select(kbit_ss_2,gort_ori_ss_2, wrmt_id_ss_2,wrmt_wa_ss_2,towre_sw_ss_2,towre_pde_ss_2, slopeProp_On, slope_mt,slope_me,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)
+task_data_typ<-d_all_typ%>%select(kbit_ss_2,gort_ori_ss_2, wrmt_id_ss_2,wrmt_wa_ss_2,towre_sw_ss_2,towre_pde_ss_2, slopeProp_On,slope_mt,slope_me,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)
 corstars(task_data,method="pearson")#you need to run the function first
 ```
 
@@ -720,13 +722,13 @@ corstars(task_data,method="pearson")#you need to run the function first
 corstars(task_data,method="pearson")#you need to run the function first
 
 ```
-###Dys only
+###Dys only: both the rotary pursuit and ASL accuracy/RT are related to reading
 
 ```{r, echo=FALSE}
 corstars(task_data_dys,method="pearson")#you need to run the function first
 ```
 
-###Typ only
+###Typ only: better VSL is related to worse reading...
 ```{r, echo=FALSE}
 corstars(task_data_typ,method="pearson")#you need to run the function first
 ```
