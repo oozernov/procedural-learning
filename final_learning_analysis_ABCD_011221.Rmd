@@ -352,7 +352,6 @@ data_tmp4check[data_tmp4check$trial !=10,1]
 
 # Outliers
 summary(mt)
-mt2<-mt%>%filter(time<200) #excluded 2
 mt2<-mt #place holder while deciding on outliers
 length(unique(mt$PartID))
 length(unique(mt2$PartID))
