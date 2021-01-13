@@ -337,13 +337,23 @@ return(subj_table)
 ```{r,echo=FALSE,warning=FALSE}
 fam_trial_vsl <- compute_visual()
 subj_table_vsl <- get_subj_visual()
+fam_trial_vsl_scale <- compute_visual_scale()
+colnames(fam_trial_vsl)[3]="PartID"
+colnames(fam_trial_vsl)[4]="Subgroup"
+colnames(fam_trial_vsl_scale)[3]="PartID"
+colnames(fam_trial_vsl_scale)[4]="Subgroup"
+colnames(subj_table_vsl)[1]="PartID"
+colnames(subj_table_vsl)[10]="Subgroup"
+write.csv(fam_trial_vsl_scale,"vsl_rt_scale_trial.csv")
+write.csv(fam_trial_vsl,"vsl_rt_trial.csv")
+write.csv(subj_table_vsl,"vsl_rt_subj_table.csv")
 ```
 * VSL RT summary stats (mean +/ sd)
 ```{r,echo=FALSE,warning=FALSE}
 data<-as_tibble(subj_table_vsl)
 data %>%
-  group_by(group) %>%
-  summarise(
+  group_by(Subgroup) %>%
+  dplyr::summarise(
           count = n(),
           rt = qwraps2::mean_sd(mean_rt),
           slope = qwraps2::mean_sd(rt_slope),
@@ -352,51 +362,40 @@ data %>%
 ```
 * The DD group had a faster RT acceleration than the TYP group tested by linear regression models
 ```{r,echo=FALSE,warning=FALSE}
-model1 <- lm(rt_col~reindex*group_cond,data=fam_trial_vsl)
+model1 <- lm(rt_col~reindex*Subgroup,data=fam_trial_vsl)
 print(summary(model1))
-fam_trial_vsl_scale <- compute_visual_scale()
-model1_scale <- lm(rt_col~reindex*group_cond,data=fam_trial_vsl_scale)
+model1_scale <- lm(rt_col~reindex*Subgroup,data=fam_trial_vsl_scale)
 print(summary(model1_scale))
 ```
 * marginal results with the raw RT data and significant results (same as linear regression) with the scaled data tested by lmer.
 ```{r,echo=FALSE,warning=FALSE}
 library(lmerTest)
-model2 <- lmer(rt_col~group_cond*reindex + (1|id)+(0+reindex|id),data=fam_trial_vsl)
+model2 <- lmer(rt_col~Subgroup*reindex + (1|PartID)+(0+reindex|PartID),data=fam_trial_vsl)
 print(summary(model2))
-model2_scale <- lmer(rt_col~group_cond*reindex + (1|id)+(0+reindex|id),data=fam_trial_vsl_scale)
+model2_scale <- lmer(rt_col~Subgroup*reindex + (1|PartID)+(0+reindex|PartID),data=fam_trial_vsl_scale)
 print(summary(model2_scale))
 ```
 ##Plot of VSL RT
 ### RT as the function of Target repetition
 ```{r,echo=FALSE}
-library(reshape)
-library(reshape2)
-group_rt_mean_vsl = cast(fam_trial_vsl,reindex+group_cond~.,value="rt_col",mean)
-colnames(group_rt_mean_vsl)[3]="mean_RT"
-group_rt_sd_vsl = cast(fam_trial_vsl,reindex+group_cond~.,value="rt_col",sd)
-colnames(group_rt_sd_vsl)[3]="sd_RT"
-group_rt_length_vsl = cast(fam_trial_vsl,reindex+group_cond~.,value="rt_col",length)
-colnames(group_rt_length_vsl)[3]="length"
-group_rt_vsl = merge(group_rt_mean_vsl,group_rt_sd_vsl)
-group_rt_vsl = merge(group_rt_vsl,group_rt_length_vsl)
-group_rt_vsl$se = group_rt_vsl$sd/sqrt(group_rt_vsl$length)
-summary(group_rt_vsl)
-pd <- position_dodge(0.2)
-ggplot(group_rt_vsl,aes(x = reindex,y = mean_RT,colour = group_cond)) +
-  theme_classic(base_size = 20.0) +
-  xlab(label = 'Trial Index') +
-  ylab(label = 'Response time during\n VSL Familiarization (ms)') +
-  scale_x_continuous(breaks = pretty_breaks()) +
-  scale_y_continuous(breaks = pretty_breaks(),limits=c(300,550)) +
-  scale_colour_hue(name="Group",    # Legend label, use darker colors
-                     breaks=c("DD", "TYP"),
-                     labels=c("Dyslexia", "Typical"),
-                     l=40) +
-  #scale_colour_brewer(palette = 'Set1') +
-  geom_point(position=pd,shape = 23, size = 3) +
-  geom_errorbar(position=pd,aes(ymin = mean_RT-se, ymax = mean_RT+se),width=0.1)+
-  geom_line(position=pd)+
-  theme(legend.justification=c(1,0),legend.position=c(1,0))  
+vsl_rt_plot<-dplyr::summarise(group_by(fam_trial_vsl,Subgroup,reindex), n = n(),
+                         mean=mean(rt_col,na.rm = T), sd=sd(rt_col,na.rm = T),se = sd/sqrt(n))
+
+ggplot(data = vsl_rt_plot, aes(x=reindex, y=mean, color = Subgroup))+
+  geom_line() +geom_point()  +
+  scale_color_manual(values=c('red','blue'))+
+  geom_errorbar(aes(ymin=mean-se,ymax=mean+se),
+                 width=.1,  size=0.5)+
+  scale_x_continuous(breaks=seq(2,24,2))+
+  #scale_y_continuous(limits = c(0.2, 0.5))+
+  theme(
+    axis.title = element_text(family = "Trebuchet MS", size = 20),
+    legend.key.size = unit(1, "cm"),
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15))  + 
+  labs(x = "Trials", y = "Response Time (ms)") +
+  theme(panel.background = element_rect(fill = "white", colour = "grey50")) + 
+  theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
 ```
 
 <!-- ### Boxplot of the first half of the trials is significantly greater than the latter half of the trial -->
@@ -411,13 +410,13 @@ ggplot(group_rt_vsl,aes(x = reindex,y = mean_RT,colour = group_cond)) +
 ```{r,echo=FALSE,warning=FALSE}
 cbbPalette <- c("#000000","#000000")
 ggplot() +
-  geom_bar(aes(x = group,y = rt_slope,fill = group),data=subj_table_vsl,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
+  geom_bar(aes(x = Subgroup,y = rt_slope,fill = Subgroup),data=subj_table_vsl,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
   theme_classic(base_size = 18.0) +
   ylab(label = 'Response Time Slope (ms/Trial)') +
   xlab(label = 'Group') +
   #coord_cartesian(ylim = c(0.3,1)) +
-  geom_errorbar(aes(y = rt_slope, x = group),data=subj_table_vsl,size = 0.3,width = 0.2,fun.y = function(x) mean(x),fun.ymin = function(x) mean(x) - sd(x)/sqrt(length(x)),fun.ymax = function(x) mean(x) + sd(x)/sqrt(length(x)) ,stat = 'summary')+
-  geom_beeswarm(aes(x = group,y = rt_slope, colour = group),data=subj_table_vsl,dodge.width=0.9,cex=2.5) +
+  geom_errorbar(aes(y = rt_slope, x = Subgroup),data=subj_table_vsl,size = 0.3,width = 0.2,fun.y = function(x) mean(x),fun.ymin = function(x) mean(x) - sd(x)/sqrt(length(x)),fun.ymax = function(x) mean(x) + sd(x)/sqrt(length(x)) ,stat = 'summary')+
+  geom_beeswarm(aes(x = Subgroup,y = rt_slope, colour = Subgroup),data=subj_table_vsl,dodge.width=0.9,cex=2.5) +
   scale_fill_brewer(palette = 'Set1') + 
   scale_color_manual(values=cbbPalette)
 ```
@@ -425,13 +424,13 @@ ggplot() +
 * mean RT slope scaled
 ```{r,echo=FALSE,warning=FALSE}
 ggplot() +
-  geom_bar(aes(x = group,y = rt_slope_scale,fill = group),data=subj_table_vsl,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
+  geom_bar(aes(x = Subgroup,y = rt_slope_scale,fill = Subgroup),data=subj_table_vsl,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
   theme_classic(base_size = 18.0) +
   ylab(label = 'Scaled Response Time Slope\n(au/trial)') +
   xlab(label = 'Group') +
   #coord_cartesian(ylim = c(0.3,1)) +
-  geom_errorbar(aes(y = rt_slope_scale, x = group),data=subj_table_vsl,size = 0.3,width = 0.2,fun.y = function(x) mean(x),fun.ymin = function(x) mean(x) - sd(x)/sqrt(length(x)),fun.ymax = function(x) mean(x) + sd(x)/sqrt(length(x)) ,stat = 'summary')+
-  geom_beeswarm(aes(x = group,y = rt_slope_scale, colour = group),data=subj_table_vsl,dodge.width=0.9,cex=2.5) +
+  geom_errorbar(aes(y = rt_slope_scale, x = Subgroup),data=subj_table_vsl,size = 0.3,width = 0.2,fun.y = function(x) mean(x),fun.ymin = function(x) mean(x) - sd(x)/sqrt(length(x)),fun.ymax = function(x) mean(x) + sd(x)/sqrt(length(x)) ,stat = 'summary')+
+  geom_beeswarm(aes(x = Subgroup,y = rt_slope_scale, colour = Subgroup),data=subj_table_vsl,dodge.width=0.9,cex=2.5) +
   scale_fill_brewer(palette = 'Set1') + 
   scale_color_manual(values=cbbPalette)
 ```
@@ -669,13 +668,22 @@ return(subj_table)
 fam_trial_tsl <- compute_aud()
 fam_trial_tsl_scale <- compute_aud_scale()
 subj_table_tsl <- get_subj_aud()
+colnames(fam_trial_tsl)[3]="PartID"
+colnames(fam_trial_tsl)[4]="Subgroup"
+colnames(fam_trial_tsl_scale)[3]="PartID"
+colnames(fam_trial_tsl_scale)[4]="Subgroup"
+colnames(subj_table_tsl)[1]="PartID"
+colnames(subj_table_tsl)[10]="Subgroup"
+write.csv(fam_trial_vsl_scale,"tsl_rt_scale_trial.csv")
+write.csv(fam_trial_vsl,"tsl_rt_trial.csv")
+write.csv(subj_table_vsl,"tsl_rt_subj_table.csv")
 ```
 * TSL RT summary (mean +/- sd)
 ```{r,echo=FALSE,warning=FALSE}
 data<-as_tibble(subj_table_tsl)
 data %>%
-  group_by(group) %>%
-  summarise(
+  group_by(Subgroup) %>%
+  dplyr::summarise(
           count = n(),
           rt = qwraps2::mean_sd(mean_rt),
           slope = qwraps2::mean_sd(rt_slope),
@@ -687,12 +695,12 @@ data %>%
 * remove outliers who have hit rate lower than and equal to 0.25 (remaining participant: 14 DD and 18 TYP)
 * participants removed from analysis: ABCD_1705 ABCD_1720 ABCD_1747 ABCD_1767 ABCD_1783 ABCD_1788 ABCD_1709 ABCD_1724 
 ```{r,echo=FALSE,warning=FALSE}
-usable_tsl_rt<-subj_table_tsl[subj_table_tsl$hit_rate>0.25,]$list_tsl_id
-subj_table_tsl_usable <-subset(subj_table_tsl,list_tsl_id %in% usable_tsl_rt)
+usable_tsl_rt<-subj_table_tsl[subj_table_tsl$hit_rate>0.25,]$PartID
+subj_table_tsl_usable <-subset(subj_table_tsl,PartID %in% usable_tsl_rt)
 data<-as_tibble(subj_table_tsl_usable)
 data %>%
-  group_by(group) %>%
-  summarise(
+  group_by(Subgroup) %>%
+  dplyr::summarise(
           count = n(),
           rt = qwraps2::mean_sd(mean_rt),
           slope = qwraps2::mean_sd(rt_slope),
@@ -703,62 +711,54 @@ data %>%
 
 * the two groups are not different in RT slope.
 ```{r,echo=FALSE,warning=FALSE}
-t.test(dprime~group,data=subj_table_tsl_usable)
-t.test(rt_slope~group,data=subj_table_tsl_usable)
-fam_trial_tsl_usable <-subset(fam_trial_tsl,id %in% usable_tsl_rt)
-fam_trial_tsl_usable_s <-subset(fam_trial_tsl_scale,id %in% usable_tsl_rt)
-model1 <- lm(rt_col~reindex*group_cond,data=fam_trial_tsl_usable)
+t.test(dprime~Subgroup,data=subj_table_tsl_usable)
+t.test(rt_slope~Subgroup,data=subj_table_tsl_usable)
+fam_trial_tsl_usable <-subset(fam_trial_tsl,PartID %in% usable_tsl_rt)
+fam_trial_tsl_usable_s <-subset(fam_trial_tsl_scale,PartID %in% usable_tsl_rt)
+model1 <- lm(rt_col~reindex*Subgroup,data=fam_trial_tsl_usable)
 print(summary(model1))
-model1_scale <-lm(rt_col~reindex*group_cond,data=fam_trial_tsl_usable_s)
+model1_scale <-lm(rt_col~reindex*Subgroup,data=fam_trial_tsl_usable_s)
 print(summary(model1_scale))
-model2 <- lmer(rt_col~reindex*group_cond+(1|id)+(0+reindex|id),data=fam_trial_tsl_usable)
+model2 <- lmer(rt_col~reindex*Subgroup+(1|PartID)+(0+reindex|PartID),data=fam_trial_tsl_usable)
 print(summary(model2))
-model2_scale <- lmer(rt_col~reindex*group_cond+(1|id)+(0+reindex|id),data=fam_trial_tsl_usable_s)
+model2_scale <- lmer(rt_col~reindex*Subgroup+(1|PartID)+(0+reindex|PartID),data=fam_trial_tsl_usable_s)
 print(summary(model2_scale))
 ```
 
 ##Plot of TSL RT
 ### RT as the function of Target repetition
 ```{r,echo=FALSE}
-group_rt_mean_tsl = cast(fam_trial_tsl,reindex+group_cond~.,value="rt_col",mean)
-colnames(group_rt_mean_tsl)[3]="mean_RT"
-group_rt_sd_tsl = cast(fam_trial_tsl,reindex+group_cond~.,value="rt_col",sd)
-colnames(group_rt_sd_tsl)[3]="sd_RT"
-group_rt_length_tsl = cast(fam_trial_tsl,reindex+group_cond~.,value="rt_col",length)
-colnames(group_rt_length_tsl)[3]="length"
-group_rt_tsl = merge(group_rt_mean_tsl,group_rt_sd_tsl)
-group_rt_tsl = merge(group_rt_tsl,group_rt_length_tsl)
-group_rt_tsl$se = group_rt_tsl$sd/sqrt(group_rt_tsl$length)
-summary(group_rt_tsl)
-pd <- position_dodge(0.2)
-ggplot(group_rt_tsl,aes(x = reindex,y = mean_RT,colour = group_cond)) +
-  theme_classic(base_size = 20.0) +
-  xlab(label = 'Trial Index') +
-  ylab(label = 'Response time during\n TSL Familiarization (ms)') +
-  scale_x_continuous(breaks = pretty_breaks()) +
-  scale_y_continuous(breaks = pretty_breaks(),limits=c(0,700)) +
-  scale_colour_hue(name="Group",    # Legend label, use darker colors
-                     breaks=c("DD", "TYP"),
-                     labels=c("Dyslexia", "Typical"),
-                     l=40) +
-  #scale_colour_brewer(palette = 'Set1') +
-  geom_point(position=pd,shape = 23, size = 3) +
-  geom_errorbar(position=pd,aes(ymin = mean_RT-se, ymax = mean_RT+se),width=0.1)+
-  geom_line(position=pd)+
-  theme(legend.justification=c(1,0),legend.position=c(1,0))  
+tsl_rt_plot<-dplyr::summarise(group_by(fam_trial_tsl,Subgroup,reindex), n = n(),
+                         mean=mean(rt_col,na.rm = T), sd=sd(rt_col,na.rm = T),se = sd/sqrt(n))
+
+ggplot(data = tsl_rt_plot, aes(x=reindex, y=mean, color = Subgroup))+
+  geom_line() +geom_point()  +
+  scale_color_manual(values=c('red','blue'))+
+  geom_errorbar(aes(ymin=mean-se,ymax=mean+se),
+                 width=.1,  size=0.5)+
+  scale_x_continuous(breaks=seq(4,48,4))+
+  #scale_y_continuous(limits = c(0.2, 0.5))+
+  theme(
+    axis.title = element_text(family = "Trebuchet MS", size = 20),
+    legend.key.size = unit(1, "cm"),
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15))  + 
+  labs(x = "Trials", y = "Response Time (ms)") +
+  theme(panel.background = element_rect(fill = "white", colour = "grey50")) + 
+  theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
 ```
 ### plot mean RT slope across the two groups
 * mean RT slope
 ```{r,echo=FALSE}
 cbbPalette <- c("#000000","#000000")
 ggplot() +
-  geom_bar(aes(x = group,y = rt_slope,fill = group),data=subj_table_tsl_usable,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
+  geom_bar(aes(x = Subgroup,y = rt_slope,fill = Subgroup),data=subj_table_tsl_usable,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
   theme_classic(base_size = 18.0) +
   ylab(label = 'Response Time Slope (ms/Trial)') +
   xlab(label = 'Group') +
   #coord_cartesian(ylim = c(0.3,1)) +
-  geom_errorbar(aes(y = rt_slope, x = group),data=subj_table_tsl_usable,size = 0.3,width = 0.2,fun.y = function(x) mean(x),fun.ymin = function(x) mean(x) - sd(x)/sqrt(length(x)),fun.ymax = function(x) mean(x) + sd(x)/sqrt(length(x)) ,stat = 'summary')+
-  geom_beeswarm(aes(x = group,y = rt_slope, colour = group),data=subj_table_tsl_usable,dodge.width=0.9,cex=2.5) +
+  geom_errorbar(aes(y = rt_slope, x = Subgroup),data=subj_table_tsl_usable,size = 0.3,width = 0.2,fun.y = function(x) mean(x),fun.ymin = function(x) mean(x) - sd(x)/sqrt(length(x)),fun.ymax = function(x) mean(x) + sd(x)/sqrt(length(x)) ,stat = 'summary')+
+  geom_beeswarm(aes(x = Subgroup,y = rt_slope, colour = Subgroup),data=subj_table_tsl_usable,dodge.width=0.9,cex=2.5) +
   scale_fill_brewer(palette = 'Set1') + 
   scale_color_manual(values=cbbPalette)
 ```
@@ -766,13 +766,13 @@ ggplot() +
 * mean RT slope scaled
 ```{r,echo=FALSE}
 ggplot() +
-  geom_bar(aes(x = group,y = rt_slope_scale,fill = group),data=subj_table_tsl_usable,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
+  geom_bar(aes(x = Subgroup,y = rt_slope_scale,fill = Subgroup),data=subj_table_tsl_usable,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
   theme_classic(base_size = 18.0) +
   ylab(label = 'Scaled Response Time Slope\n(au/trial)') +
   xlab(label = 'Group') +
   #coord_cartesian(ylim = c(0.3,1)) +
-  geom_errorbar(aes(y = rt_slope_scale, x = group),data=subj_table_tsl_usable,size = 0.3,width = 0.2,fun.y = function(x) mean(x),fun.ymin = function(x) mean(x) - sd(x)/sqrt(length(x)),fun.ymax = function(x) mean(x) + sd(x)/sqrt(length(x)) ,stat = 'summary')+
-  geom_beeswarm(aes(x = group,y = rt_slope_scale, colour = group),data=subj_table_tsl_usable,dodge.width=0.9,cex=2.5) +
+  geom_errorbar(aes(y = rt_slope_scale, x = Subgroup),data=subj_table_tsl_usable,size = 0.3,width = 0.2,fun.y = function(x) mean(x),fun.ymin = function(x) mean(x) - sd(x)/sqrt(length(x)),fun.ymax = function(x) mean(x) + sd(x)/sqrt(length(x)) ,stat = 'summary')+
+  geom_beeswarm(aes(x = Subgroup,y = rt_slope_scale, colour = Subgroup),data=subj_table_tsl_usable,dodge.width=0.9,cex=2.5) +
   scale_fill_brewer(palette = 'Set1') + 
   scale_color_manual(values=cbbPalette)
 ```
@@ -796,9 +796,9 @@ for (id in all_subj_slope$subj) {
   all_subj_slope[all_subj_slope$subj==id,]$tasknum = nrow(all_subj_slope[all_subj_slope$subj==id,])
 }
 all_subj_slope_complete = subset(all_subj_slope,tasknum==2)
-model_rt <- aov(rt_slope_scale~task*group+mean_rt+Error(subj/task),data=all_subj_slope_complete) # controlling for mean rt.
+model_rt <- aov(rt_slope_scale~task*Subgroup+mean_rt+Error(subj/task),data=all_subj_slope_complete) # controlling for mean rt.
 print(summary(model_rt))
-model_rt_lmer <- lmer(rt_col~task*group_cond+(1+task|id)+(1|reindex),data=all_fam_trials)
+model_rt_lmer <- lmer(rt_col~task*Subgroup+(1+task|PartID)+(1|reindex),data=all_fam_trials)
 print(summary(model_rt_lmer))
 ```
 
@@ -806,16 +806,18 @@ print(summary(model_rt_lmer))
 ```{r,echo=FALSE}
 stat.test <- all_subj_slope %>%
   group_by(task) %>%
-  tukey_hsd(rt_slope_scale~group)
+  tukey_hsd(rt_slope_scale~Subgroup)
 stat.test
+```
+```{r,echo=FALSE}
 ggplot() +
-  geom_bar(aes(x = group,y = rt_slope_scale,fill = group),data=all_subj_slope,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
+  geom_bar(aes(x = Subgroup,y = rt_slope_scale,fill = Subgroup),data=all_subj_slope,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
   theme_classic(base_size = 18.0) +
   ylab(label = 'Scaled Response Time Slope\n(au/trial)') +
   xlab(label = 'Group') +
   #coord_cartesian(ylim = c(0.3,1)) +
-  geom_errorbar(aes(y = rt_slope_scale, x = group),data=all_subj_slope,size = 0.3,width = 0.2,fun.y = function(x) mean(x),fun.ymin = function(x) mean(x) - sd(x)/sqrt(length(x)),fun.ymax = function(x) mean(x) + sd(x)/sqrt(length(x)) ,stat = 'summary')+
-  geom_beeswarm(aes(x = group,y = rt_slope_scale, colour = group),data=all_subj_slope,dodge.width=0.9,cex=2.5) +
+  geom_errorbar(aes(y = rt_slope_scale, x = Subgroup),data=all_subj_slope,size = 0.3,width = 0.2,fun.y = function(x) mean(x),fun.ymin = function(x) mean(x) - sd(x)/sqrt(length(x)),fun.ymax = function(x) mean(x) + sd(x)/sqrt(length(x)) ,stat = 'summary')+
+  geom_beeswarm(aes(x = Subgroup,y = rt_slope_scale, colour = Subgroup),data=all_subj_slope,dodge.width=0.9,cex=2.5) +
   facet_wrap(task~.) +
   scale_fill_brewer(palette = 'Set1') + 
   scale_color_manual(values=cbbPalette)
@@ -912,10 +914,13 @@ for (id in list_vsl_id) {
 vsl_acc_table <- data.frame(list_vsl_id,subj_corr,vsl_cond)
 vsl_acc_table$task <- "Visual"
 vsl_acc_table$group<-""
-vsl_acc_table[vsl_acc_table$list_vsl_id %in% DD,]$group = "Dyslexic"
-vsl_acc_table[vsl_acc_table$list_vsl_id %in% TYP,]$group = "Typical"
-colnames(vsl_acc_table)[1] = "subj"
+vsl_acc_table[vsl_acc_table$list_vsl_id %in% DD,]$group = "DD"
+vsl_acc_table[vsl_acc_table$list_vsl_id %in% TYP,]$group = "TYP"
+colnames(vsl_acc_table)[1] = "PartID"
+colnames(vsl_acc_table)[5] = "Subgroup"
 colnames(vsl_acc_table)[3] = "language"
+colnames(vsl_accuracy)[2] = "PartID"
+colnames(vsl_accuracy)[4] = "Subgroup"
 
 for (i in seq(from=1,to=length(tsl_accuracy$ans),by=1)){
   corrt<-append(corrt,as.numeric(tsl_accuracy[i,]$ans==tsl_accuracy[i,]$key))
@@ -937,20 +942,26 @@ for (id in list_tsl_id) {
 tsl_acc_table <- data.frame(list_tsl_id,subj_corrt,tsl_cond)
 tsl_acc_table$task <- "Auditory"
 tsl_acc_table$group<-""
-tsl_acc_table[tsl_acc_table$list_tsl_id %in% DD,]$group = "Dyslexic"
-tsl_acc_table[tsl_acc_table$list_tsl_id %in% TYP,]$group = "Typical"
-colnames(tsl_acc_table)[1] = "subj"
+tsl_acc_table[tsl_acc_table$list_tsl_id %in% DD,]$group = "DD"
+tsl_acc_table[tsl_acc_table$list_tsl_id %in% TYP,]$group = "TYP"
+colnames(tsl_acc_table)[1] = "PartID"
+colnames(tsl_acc_table)[5] = "Subgroup"
 colnames(tsl_acc_table)[3] = "language"
 colnames(tsl_acc_table)[2] = "subj_corr"
+colnames(tsl_accuracy)[2] = "PartID"
+colnames(tsl_accuracy)[4] = "Subgroup"
 all_accuracy <- rbind(vsl_accuracy,tsl_accuracy)
 all_acc_table <- rbind(vsl_acc_table,tsl_acc_table)
+all_accuracy$key <- vapply(all_accuracy$key, paste, collapse = ", ", character(1L))
+write.csv(all_accuracy,"all_sl_accuracy.csv")
+write.csv(all_acc_table,"sl_acc_subj_table.csv")
 ```
 ## Accuracy Data Summary (mean +/- sd)
 ```{r,echo=FALSE,warning=FALSE}
 data<-as_tibble(all_acc_table)
 data %>%
-  group_by(group,task) %>%
-  summarise(
+  group_by(Subgroup,task) %>%
+  dplyr::summarise(
           count = n(),
           accuracy = qwraps2::mean_sd(subj_corr)
           )
@@ -964,13 +975,13 @@ TYP_acc_vsl <- NULL
 TYP_acc_tsl <- NULL
 
 for(id in DD){
-  DD_acc_vsl<- append(DD_acc_vsl,vsl_acc_table$subj_corr[vsl_acc_table$subj==id])
-  DD_acc_tsl<- append(DD_acc_tsl,tsl_acc_table$subj_corr[tsl_acc_table$subj==id])
+  DD_acc_vsl<- append(DD_acc_vsl,vsl_acc_table$subj_corr[vsl_acc_table$PartID==id])
+  DD_acc_tsl<- append(DD_acc_tsl,tsl_acc_table$subj_corr[tsl_acc_table$PartID==id])
 }
 
 for(id in TYP){
-  TYP_acc_vsl<- append(TYP_acc_vsl,vsl_acc_table$subj_corr[vsl_acc_table$subj==id])
-  TYP_acc_tsl<- append(TYP_acc_tsl,tsl_acc_table$subj_corr[tsl_acc_table$subj==id])
+  TYP_acc_vsl<- append(TYP_acc_vsl,vsl_acc_table$subj_corr[vsl_acc_table$PartID==id])
+  TYP_acc_tsl<- append(TYP_acc_tsl,tsl_acc_table$subj_corr[tsl_acc_table$PartID==id])
 }
 
 t.test(DD_acc_vsl,mu=0.5,alternative = "greater")
@@ -981,26 +992,37 @@ t.test(TYP_acc_tsl,mu=0.5,alternative = "greater")
 ```
 ### anova: marginal main effect of task and marginal interaction between task and group
 ```{r,echo=FALSE,warning=FALSE}
-all_acc_table_complete = subset(all_acc_table,subj!="ABCD_1708")
-all_acc_table_complete = subset(all_acc_table_complete,subj!="ABCD_1727")
-model_acc <- aov(subj_corr~task*group+Error(subj/task),data=all_acc_table_complete)
+all_acc_table_complete = subset(all_acc_table,PartID!="ABCD_1708")
+all_acc_table_complete = subset(all_acc_table_complete,PartID!="ABCD_1727")
+model_acc <- aov(subj_corr~task*Subgroup+Error(PartID/task),data=all_acc_table_complete)
 print(summary(model_acc))
 ```
 ### generalized linear effect modeling: main effect of task (visual > auditory); main effect of group (TYP > DD); marginal interaction between task and group 
 ```{r,echo=FALSE}
-model_acc_lmer <- glmer(corr~task*group+(1+task|subj)+(1|trial),data=all_accuracy,family="binomial")
+model_acc_lmer <- glmer(corr~task*Subgroup+(1+task|PartID)+(1|trial),data=all_accuracy,family="binomial")
 print(summary(model_acc_lmer))
+```
+### generalized linear effect modeling within each task
+```{r,echo=FALSE}
+vsl_accuracy = subset(all_accuracy,task=="Visual")
+tsl_accuracy = subset(all_accuracy,task=="Auditory")
+
+model_vslacc_lmer <- glmer(corr~Subgroup+(1|PartID)+(1|trial),data=vsl_accuracy,family="binomial")
+print(summary(model_vslacc_lmer))
+
+model_tslacc_lmer <- glmer(corr~Subgroup+(1|PartID)+(1|trial),data=tsl_accuracy,family="binomial")
+print(summary(model_tslacc_lmer))
 ```
 ## plot the accuracy by group and task
 ```{r,echo=FALSE}
 stat.test <- all_acc_table %>%
   group_by(task) %>%
-  tukey_hsd(subj_corr~group)
+  tukey_hsd(subj_corr~Subgroup)
 stat.test
 stat.test <- stat.test %>% add_xy_position(x = "group", fun = "mean_se")
-all_acc_table$group = as.factor(all_acc_table$group)
-ggbarplot(all_acc_table, x = "group", y = "subj_corr", fill = 
-            "group", add = "mean_se", facet.by = c("task")) +
+all_acc_table$Subgroup = as.factor(all_acc_table$Subgroup)
+ggbarplot(all_acc_table, x = "Subgroup", y = "subj_corr", fill = 
+            "Subgroup", add = "mean_se", facet.by = c("task")) +
   facet_wrap(vars(task),scales="free")+
   stat_pvalue_manual(stat.test, hide.ns = TRUE, tip.length = 0, step.increase = 0) +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.15))) +
@@ -1011,13 +1033,13 @@ ggbarplot(all_acc_table, x = "group", y = "subj_corr", fill =
 ## alternative plots
 ```{r,echo=FALSE}
 ggplot() +
-  geom_bar(aes(x = group,y = subj_corr,fill = group),data=all_acc_table,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
+  geom_bar(aes(x = Subgroup,y = subj_corr,fill = Subgroup),data=all_acc_table,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
   theme_classic(base_size = 18.0) +
   ylab(label = '% Correct') +
   xlab(label = 'Group') +
   #coord_cartesian(ylim = c(0.3,1)) +
-  geom_errorbar(aes(y = subj_corr, x = group),data=all_acc_table,size = 0.3,width = 0.2,fun.y = function(x) mean(x),fun.ymin = function(x) mean(x) - sd(x)/sqrt(length(x)),fun.ymax = function(x) mean(x) + sd(x)/sqrt(length(x)) ,stat = 'summary')+
-  geom_beeswarm(aes(x = group,y = subj_corr, colour = group),data=all_acc_table,dodge.width=0.9,cex=2.5) +
+  geom_errorbar(aes(y = subj_corr, x = Subgroup),data=all_acc_table,size = 0.3,width = 0.2,fun.y = function(x) mean(x),fun.ymin = function(x) mean(x) - sd(x)/sqrt(length(x)),fun.ymax = function(x) mean(x) + sd(x)/sqrt(length(x)) ,stat = 'summary')+
+  geom_beeswarm(aes(x = Subgroup,y = subj_corr, colour = Subgroup),data=all_acc_table,dodge.width=0.9,cex=2.5) +
   facet_wrap(task~.) +
   scale_fill_brewer(palette = 'Set1') + 
   scale_color_manual(values=cbbPalette)
