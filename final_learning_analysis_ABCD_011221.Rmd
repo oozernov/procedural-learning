@@ -149,21 +149,6 @@ summary(lmerrp2)
 ## Slope Analysis
 
 
-```{r, echo=FALSE,warning = FALSE,include=FALSE}
-####growth curve analysis
-temp = complete.cases(rp2)
-rp2 = rp2[temp,]
-s <- poly(unique(rp2$trial),2)
-rp2[,paste("otrial",1:2,sep="")] <-s[rp2$trial,1:2]
-summary(rp2)
-m.base <- lmer(prop_on ~(otrial1+otrial2)+(otrial1+otrial2 | PartID),data=rp2,REML=FALSE)
-m.0 <- lmer(prop_on ~(otrial1+otrial2)+ Subgroup + (otrial1+otrial2 | PartID),data=rp2,REML=FALSE)
-m.1 <- lmer(prop_on ~(otrial1+otrial2)*Subgroup + (otrial1+otrial2 | PartID),data=rp2,REML=FALSE)
-anova(m.base,m.0,m.1)
-summary(m.1)
-rp2$fitted_prop_on = fitted(m.1)  # ZQ note: the growth curve analyses suggested that the two groups are marginally different on the linear term (similar as the analysis above). It is perhaps not necessary to fit a curve. I agree that the linear estimate is pretty good.
-```
-
 ```{r, echo=FALSE, include=FALSE}
 ####Extract indiviudal slope
 # rp2$trial<-as.numeric(as.character(rp2$trial))
@@ -356,21 +341,39 @@ data_tmp4check[data_tmp4check$trial !=10,1]
 # Outliers
 summary(mt)
 mt2<-mt #place holder while deciding on outliers
-mt2<-mt2%>%filter(error<95) #3sd above mean
-length(unique(mt$PartID))
+#mt2<-mt2%>%filter(error<95) #3sd above mean
+#length(unique(mt$PartID))
 length(unique(mt2$PartID))
 histogram(mt2$error)
-mt2<-mt2%>%filter(time<73.51465)
+#mt2<-mt2%>%filter(time<73.51465)
 histogram(mt2$time)
 mt2$Subgroup<-as.factor(mt2$Subgroup)
+
+#extract trial 1
+mt_1<-mt2%>%filter(trial==1) %>%select(PartID,trial,error,time)
+names(mt_1)[names(mt_1)=="time"] <- "time_1"
+names(mt_1)[names(mt_1)=="error"] <- "error_1"
+mt2<-merge(mt_1,mt2,"PartID")
+
+#and run the model controlling for it
+
+m3<-lm(time~time_1+Subgroup*trial.x,
+        data=mt2)
+summary(m3) #trial is significant
+
+m4<-lm(error~Subgroup*trial,
+        data=mt2)
+
+summary(m4) #trial 
 ```
 
 
 ### Statistical Analysis by Trial 
 Significant group differences in learning across trials for time, but not error, with better learning for Typ.  Differences survive after controlling for age, sex, and IQ
 ```{r, echo=FALSE,warning = FALSE}
+mt3<-mt2%>%filter(trial!=1)
 m3<-lm(time~Subgroup*trial,
-        data=mt2)
+        data=mt3)
 summary(m3) #trial is significant
 
 m4<-lm(error~Subgroup*trial,
@@ -404,6 +407,9 @@ summary(lmerm2)
 ## MT: Plot Time/Error by Trial
 
 ```{r, echo=FALSE,warning = FALSE}
+mt2<-mt
+mt2<-mt2%>%filter(trial!=1) 
+
 mt2$time <- as.numeric(mt2$time) 
 mt2$error <- as.numeric(mt2$error)
 mt2$trial <- as.numeric(mt2$trial)
