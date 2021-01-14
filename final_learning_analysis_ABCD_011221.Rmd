@@ -110,13 +110,13 @@ hist(rp2$prop_on)
 
 ### Statstical Analysis by Trial
 There is no significant group difference in baseline speed for RP.
+```{r,echo=FALSE,warning = FALSE}
+t.test(d$rotarypursuit_0_2~d$Subgroup)
+```
 There is a significant learning effect with increasing time on target on across trials. 
 The interaction is significant with faster learning for the Dys group. The results remain the same after controlling for sex, age, and IQ.
 
 ```{r, echo=FALSE,warning = FALSE}
-
-t.test(d$rotarypursuit_0_2~d$Subgroup)
-
 rp2$PartID = as.factor(rp2$PartID)
 rp2$Subgroup = as.factor(rp2$Subgroup)
 m1<-lm(prop_on~Subgroup*trial,
@@ -256,24 +256,23 @@ ggplot(data = rpPlot, aes(x=trial, y=mean, color = Subgroup))+
 ### Alternative plots with fitted curve
 
 ```{r, echo=FALSE,warning = FALSE, include=FALSE}
-ggplot(rp2, aes(trial, prop_on, color=Subgroup))+
-  stat_summary(fun.data=mean_se, geom="pointrange")+
-  stat_summary(aes(y=fitted_prop_on),fun.y=mean, geom="line")+
-  scale_color_manual(values=c('red','blue'))+
-  scale_x_continuous(breaks=seq(2,16,1))+
-  theme(
-    axis.title = element_text(family = "Trebuchet MS", size = 20),
-    legend.key.size = unit(1, "cm"),
-    axis.text.x = element_text(size = 15),
-    axis.text.y = element_text(size = 15))  + 
-  labs(x = "Trials", y = "Proportion On (secs)") +
-  theme(panel.background = element_rect(fill = "white", colour = "grey50")) + 
-  theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
+# ggplot(rp2, aes(trial, prop_on, color=Subgroup))+
+#   stat_summary(fun.data=mean_se, geom="pointrange")+
+#   stat_summary(aes(y=fitted_prop_on),fun.y=mean, geom="line")+
+#   scale_color_manual(values=c('red','blue'))+
+#   scale_x_continuous(breaks=seq(2,16,1))+
+#   theme(
+#     axis.title = element_text(family = "Trebuchet MS", size = 20),
+#     legend.key.size = unit(1, "cm"),
+#     axis.text.x = element_text(size = 15),
+#     axis.text.y = element_text(size = 15))  + 
+#   labs(x = "Trials", y = "Proportion On (secs)") +
+#   theme(panel.background = element_rect(fill = "white", colour = "grey50")) + 
+#   theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
 ```
 
 ## ANCOVA on individual slope
 marginal group effect
-
 ```{r, echo=FALSE,warning = FALSE}
 m2<-lm(slopeProp_On~kbit_ss+Subgroup, data=d_rp)
 anova(m2)
@@ -349,29 +348,40 @@ histogram(mt2$error)
 histogram(mt2$time)
 mt2$Subgroup<-as.factor(mt2$Subgroup)
 
+```
+
+### Statistical Analysis by Trial 
+Significant group differences in learning across trials for time, but not error, with better learning for Typ.  Differences survive after controlling for age, sex, and IQ
+
+```{r, echo=FALSE,include=FALSE}
+mt2$PartID<-as.factor(mt2$PartID)
 #extract trial 1
-mt_1<-mt2%>%filter(trial==1) %>%select(PartID,trial,error,time)
-names(mt_1)[names(mt_1)=="time"] <- "time_1"
-names(mt_1)[names(mt_1)=="error"] <- "error_1"
+mt_1<-mt2%>%
+  dplyr::filter(trial==1|trial==2)%>%
+  dplyr::group_by(PartID)%>%
+  dplyr::summarize(t12=mean(time,na.omit=TRUE))
+me_1<-mt2%>%
+  dplyr::filter(trial==1|trial==2)%>%
+  dplyr::group_by(PartID)%>%
+  dplyr::summarize(e12=mean(error,na.omit=TRUE))
+
 mt2<-merge(mt_1,mt2,"PartID")
+mt2<-merge(me_1,mt2,"PartID")
 
 #and run the model controlling for it
 
-m3<-lm(time~time_1+Subgroup*trial.x,
+m3<-lm(time~t12+Subgroup*trial,
         data=mt2)
 summary(m3) #trial is significant
 
-m4<-lm(error~Subgroup*trial,
+m4<-lm(error~e12+Subgroup*trial,
         data=mt2)
 
 summary(m4) #trial 
 ```
 
-
-### Statistical Analysis by Trial 
-Significant group differences in learning across trials for time, but not error, with better learning for Typ.  Differences survive after controlling for age, sex, and IQ
 ```{r, echo=FALSE,warning = FALSE}
-mt3<-mt2%>%filter(trial!=1)
+mt3<-mt2%>%filter(trial!=1) #exclude trial 1
 m3<-lm(time~Subgroup*trial,
         data=mt3)
 summary(m3) #trial is significant
@@ -630,7 +640,8 @@ plot(multi.group_asl, palette=c("blue","red"),rawplot.ylabel = "ASL Time Slope")
 
 ```
 
-##VSL Slope Analysis (ZQ notes: the group difference analysis should refer to abcd_sl_analysis.pdf, both the linear models and the lmer models are available with trials entered as continuous variables)
+##VSL Slope Analysis 
+(ZQ notes: the group difference analysis should refer to abcd_sl_analysis.pdf, both the linear models and the lmer models are available with trials entered as continuous variables)
 ```{r,echo=FALSE,warning = FALSE}
 m6<-lm(vis_slope_scale~background_age+background_sex+Subgroup, data=d_all,na.action = na.exclude)
 anova(m6) 
