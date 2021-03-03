@@ -1,0 +1,894 @@
+---
+title: "Procedural Learning 110320"
+author: "Ola Ozernov-Palchik"
+date: "11/4/2020"
+output:
+  word_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r Clean and organize, include=FALSE,warning = FALSE}
+# Clearn and organize data
+#import packages
+Packages <- c("dplyr", "stats", "psych", "ggplot2", "lme4",
+              "gridExtra", "dplyr","caret","tidyverse",
+              "plyr","lmerTest","ggpubr","nlme","emmeans"
+)
+
+lapply(Packages, library, character.only = TRUE)
+source("corstars_function.R")
+####Organizational ####
+
+#set subject directory
+#setwd("~/Dropbox (MIT)/learning_analysis")
+setwd("~/Dropbox (MIT)/Github/procedural-learning")
+
+#import pocedural.csv file
+d <- read.csv('procedural_data072320.csv',stringsAsFactors = FALSE,skipNul = TRUE,
+              blank.lines.skip = TRUE)
+
+
+
+groups<-read.csv("abcd_group.csv")
+names(groups)[names(groups)=="ID"] <- "PartID"
+names(d)[names(d)=="abcd_id"] <- "PartID"
+d<-merge(d,groups,'PartID')
+SL=read.csv("sl_analysis/all_sl_wide.csv")
+
+#Rename variables and organize
+
+#exclude ineligible participants
+d<-d%>%filter(d$PartID!='ABCD_1718')
+d<-d%>%filter(d$PartID!='ABCD_1728')
+
+d<-d%>%filter(d$Subgroup=="TYP"| d$Subgroup=="DD")
+
+```
+
+# Sample Size
+```{r, echo=FALSE,warning = FALSE}
+local({
+  .Table <- xtabs(~Subgroup, data=d)
+  cat("\nFrequency table:\n")
+  print(.Table)
+})
+```
+
+
+# Rotary Pursuit
+
+Question for JDE: Factor or continuous for trial?
+
+```{r, include=FALSE}
+## Extract and organize tasks
+PL<-d[c(1,188,3:4,54:70,71:80)]
+
+rp <- NULL
+rp <- data.frame('PartID'= character(),'Subgroup' = character(),'plType' = character(),'trial' = double(),
+                      'On' = double(),'Off' = double(),stringsAsFactors=FALSE)
+
+for (i in 1:nrow(PL)) {
+  if (PL[i,10] == ""){ #if null go to next line
+    next()
+  }
+  for(k in 6:21){
+    on <- as.numeric(trimws(strsplit(PL[i,k],';')[[1]][1]))
+    off <- as.numeric(trimws(strsplit(PL[i,k],';')[[1]][2]))
+    Subgroup <- PL[i,2]
+    if (nrow(rp) == 0) {
+      rp[1,] <- c(PL[i,1],as.character(PL[i,2]),'rp',k-5,on,off)    }
+    else {
+      rp[nrow(rp) + 1,] <- c(PL[i,1],as.character(PL[i,2]),'rp',k-5,on,off)
+    }
+  }
+}
+
+rp$On <- as.numeric(rp$On)
+rp$Off <- as.numeric(rp$Off)
+rp$trial <- as.numeric(rp$trial)
+
+rp2<-rp%>%group_by(PartID,Subgroup,trial)%>%
+                         dplyr::mutate(prop_on=On/(On+Off))
+
+plot(rp2$prop_on~rp2$trial)
+ # left_join(d)
+
+# Check # of trials per each subject
+data_tmp4check <- aggregate(prop_on ~ PartID * Subgroup, FUN=NROW, data = rp2 )
+unique(data_tmp4check[data_tmp4check$trial != 16,])
+#View(data_tmp4check)
+length(unique(d$PartID))
+data_tmp4check[data_tmp4check$trial !=16,1]
+hist(rp2$prop_on)
+```
+
+### Statstical Analysis by Trial
+There is no significant group difference in baseline speed for RP.
+```{r,echo=FALSE,warning = FALSE}
+t.test(d$rotarypursuit_0_2~d$Subgroup)
+```
+
+
+```{r, echo=FALSE,warning = FALSE}
+rp2$PartID = as.factor(rp2$PartID)
+rp2$Subgroup = as.factor(rp2$Subgroup)
+rp2_age_gender_iq = merge(rp2,d[,c(1,3,4,6)],all.x=TRUE)
+```
+
+#### Linear mixed-effect modeling:
+- model with trial and participant as random effects (controlling for age and sex)
+- it doesn't make sense to me to model trial as a random effect
+```{r, echo=FALSE,warning = FALSE,include=FALSE}
+lmerrp1 <- lmer(prop_on~Subgroup*trial +background_age+background_sex + (1|PartID),data=rp2_age_gender_iq)
+lmerrp2 <- lmer(prop_on~Subgroup*trial +background_age+background_sex + (1+trial|PartID),data=rp2_age_gender_iq)
+anova(lmerrp1,lmerrp2)
+summary(lmerrp2) #borderline significant effect for Subgroup x trial
+```
+
+## Slope Analysis
+
+
+```{r, echo=FALSE, include=FALSE}
+d_glm_fit_list <- vector(mode = "list", length = nrow(rp)*2)
+index <- 0
+abcd_ids=unique(rp2$PartID)
+b_list=c()
+m_list = c()
+
+for (subj in abcd_ids) { #d_export is my list of subject
+  #for (a in c("d", "b"))
+  # index <- index + 1
+  #print(subj)
+  d_subj <- filter(rp2, PartID==subj)
+  subj_model <- lm(formula=On ~ trial, #complettion time(On/Off) ~trial
+                    data = d_subj)
+  b_list[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
+  m_list[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
+
+}
+
+#Off Slopes
+d_glm_fit_list <- vector(mode = "list", length = nrow(rp)*2)
+index <- 0
+
+abcd_ids=unique(rp$PartID)
+b_list2=c()
+m_list2 = c()
+
+for (subj in abcd_ids) { #d_export is my list of subject
+  #for (a in c("d", "b"))
+  # index <- index + 1
+  #print(subj)
+  d_subj <- filter(rp2, PartID==subj)
+  subj_model <- lm(formula=Off ~ poly(trial,3,raw=TRUE), #complettion time(On/Off) ~trial
+                    data = d_subj)
+  b_list2[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
+  m_list2[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
+
+}
+
+#PropOn Slopes
+
+d_glm_fit_list <- vector(mode = "list", length = nrow(rp)*2)
+index <- 0
+
+abcd_ids=unique(rp$PartID)
+b_list4=c()
+m_list4 = c()
+
+for (subj in abcd_ids) { #d_export is my list of subject
+  #for (a in c("d", "b"))
+  # index <- index + 1
+  #print(subj)
+  d_subj <- filter(rp2, PartID==subj)
+  subj_model <- lm(formula=prop_on ~ trial, #complettion time(On/Off) ~trial
+                    data = d_subj)
+  b_list4[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
+  m_list4[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
+}
+
+#Create a new Data Frame containing the slopes
+rp_data <- data.frame(PartID=abcd_ids,slopeOn = m_list, slopeOff = m_list2, slopeProp_On = m_list4)
+d_rp<-merge(d,rp_data) 
+```
+
+```{r, echo=FALSE,include=FALSE}
+hist(d_rp$slopeProp_On)
+d_rp=d_rp%>%filter(d_rp$slopeProp_On>0) #remove negative slopes
+
+```
+
+
+## Plot Rotary Pursuit
+
+```{r, echo=FALSE,warning = FALSE}
+rp2$trial<-as.integer(rp2$trial)
+
+rpPlot<-dplyr::summarise(group_by(rp2,Subgroup,trial), n = n(),
+                         mean=mean(prop_on,na.rm = T), sd=sd(On/(On+Off),na.rm = T),se = sd/sqrt(n))
+
+ggplot(data = rpPlot, aes(x=trial, y=mean, color = Subgroup))+
+  geom_line() +geom_point()  +
+  scale_color_manual(values=c('red','blue'))+
+  geom_errorbar(aes(ymin=mean-se,ymax=mean+se),
+                 width=.1,  size=0.5)+
+  scale_x_continuous(breaks=seq(1,16,1))+
+  #scale_y_continuous(limits = c(0.2, 0.5))+
+  theme(
+    axis.title = element_text(family = "Trebuchet MS", size = 20),
+    legend.key.size = unit(1, "cm"),
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15))  +
+  labs(x = "Trials", y = "Proportion On (secs)") +
+  theme(panel.background = element_rect(fill = "white", colour = "grey50")) +
+  theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
+```
+
+## ANCOVA on individual slope
+- marginal group effect on slope
+- should we control for IQ?
+```{r, echo=FALSE,warning = FALSE}
+m2<-lm(slopeProp_On~background_sex+background_age+kbit_ss+Subgroup, data=d_rp)
+summary(m2)
+lsmeans(m2, list(pairwise ~ Subgroup), adjust = "tukey") #p=0.08
+```
+
+## Plotting RP Slope Effects
+```{r, echo=FALSE,warning = FALSE}
+plot_rp_slope<-d_rp%>%dplyr::select('PartID',"Subgroup","slopeProp_On")
+plot_rp_slope<-na.omit(plot_rp_slope)
+
+rp_slope = plot_rp_slope %>%
+  dplyr::group_by(PartID, Subgroup) %>%
+  dplyr::summarise(mean = mean(slopeProp_On, na.rm = T))
+
+
+multi.group3 <-
+  rp_slope %>%
+  dabestr::dabest(Subgroup,mean,
+         idx = list(c("TYP",'DD')),
+         paired = FALSE)
+two.group.unpaired.meandiff <- dabestr::mean_diff(multi.group3)
+plot(two.group.unpaired.meandiff, palette=c("blue","red"),rawplot.ylabel = "RP Prop On Slope")
+```
+
+# Mirror Tracing
+
+```{r, include=FALSE,warning = FALSE}
+## Extract and organize
+mt <- NULL
+mt <- data.frame('PartID'= character(),'Subgroup' = character(),'Type' = character(),'trial' = double(),
+                     'time' = double(),'error' = double(),stringsAsFactors=FALSE)
+for (i in 1:nrow(PL)) {
+  if (PL[i,22] == ""){ #if null go to next line
+    next()
+  }
+  for(k in 22:31){
+    print(paste(k,PL[i,k]))
+    time <- as.numeric(trimws(strsplit(PL[i,k],';')[[1]][1]))
+    error <- as.numeric(trimws(strsplit(PL[i,k],';')[[1]][2]))
+    if (nrow(mt) == 0) {
+      mt[1,] <- c(PL[i,1],PL[i,2],'mt',k-21,time,error)
+    }
+    else {
+      mt[nrow(mt) + 1,] <- c(PL[i,1],PL[i,2],'mt',k-21,time,error)
+    }
+  }
+}
+
+mt$time <- as.numeric(mt$time)
+mt$error <- as.numeric(mt$error)
+mt$trial <- as.numeric(mt$trial)
+```
+
+
+```{r,include=FALSE}
+
+## QC
+#Should we exclude outliers?
+
+# Check # of trials per each subject
+data_tmp4check <- aggregate(error ~ PartID * Subgroup, FUN=NROW, data = mt )
+unique(data_tmp4check[data_tmp4check$trial != 10,])
+#View(data_tmp4check)
+length(unique(d$PartID))
+data_tmp4check[data_tmp4check$trial !=10,1]
+
+# Outliers
+summary(mt)
+mt2<-mt #place holder while deciding on outliers
+#mt2<-mt2%>%filter(error<95) #3sd above mean
+#length(unique(mt$PartID))
+length(unique(mt2$PartID))
+histogram(mt2$error)
+#mt2<-mt2%>%filter(time<73.51465)
+histogram(mt2$time)
+mt2$Subgroup<-as.factor(mt2$Subgroup)
+
+```
+
+### Statistical Analysis by Trial
+Significant group differences in learning across trials for time, but not error, with better learning for Typ.  Differences survive after controlling for age, sex, and IQ
+
+```{r, echo=FALSE,include=FALSE}
+mt2$PartID<-as.factor(mt2$PartID)
+#extract trial 1
+mt_1<-mt2%>%
+  dplyr::filter(trial==1|trial==2)%>%
+  dplyr::group_by(PartID)%>%
+  dplyr::summarize(t12=mean(time,na.omit=TRUE))
+me_1<-mt2%>%
+  dplyr::filter(trial==1|trial==2)%>%
+  dplyr::group_by(PartID)%>%
+  dplyr::summarize(e12=mean(error,na.omit=TRUE))
+
+mt2<-merge(mt_1,mt2,"PartID")
+mt2<-merge(me_1,mt2,"PartID")
+
+#and run the model controlling for it
+
+m3<-lm(time~t12+Subgroup*trial,
+        data=mt2)
+summary(m3) #trial is significant
+
+m4<-lm(error~e12+Subgroup*trial,
+        data=mt2)
+
+summary(m4) #trial
+```
+
+```{r, echo=FALSE,warning = FALSE}
+mt3<-mt2%>%filter(trial!=1) #exclude trial 1
+
+```
+
+### linear mixed modeling
+main effect of trial, no effect of subgroups
+```{r, echo=FALSE,warning = FALSE,include=FALSE}
+mt2_age_gender_iq = merge(mt2,d[,c(1,3,4,6)],all.x=TRUE)
+
+lmerm1<-lmer(time~background_age+background_sex+kbit_ss+Subgroup*trial+(1+trial|PartID),
+        data=mt2_age_gender_iq)
+lmerm2<-lmer(time~background_age+background_sex+kbit_ss+Subgroup*trial+(1|PartID),
+        data=mt2_age_gender_iq)
+anova(lmerm1,lmerm2)
+summary(lmerm1)
+```
+
+```{r, echo=FALSE,warning = FALSE,include=FALSE}
+lmerm3<-lmer(error~background_age+background_sex+kbit_ss+Subgroup*trial+(1+trial|PartID),
+        data=mt2_age_gender_iq)
+lmerm4<-lmer(error~background_age+background_sex+kbit_ss+Subgroup*trial+(1|PartID),
+        data=mt2_age_gender_iq)
+anova(lmerm3,lmerm4)
+summary(lmerm3)
+```
+
+## MT: Plot Time/Error by Trial
+
+```{r, echo=FALSE,warning = FALSE}
+mt2<-mt
+mt2<-mt2%>%filter(trial!=1)
+
+mt2$time <- as.numeric(mt2$time)
+mt2$error <- as.numeric(mt2$error)
+mt2$trial <- as.numeric(mt2$trial)
+
+mtTPlot<-dplyr::summarise(group_by(mt2,Subgroup,trial), n = n(),
+                         meanT=mean(time,na.rm = T), sd=sd(time,na.rm = T),se = sd/sqrt(n))
+mtEPlot<-dplyr::summarise(group_by(mt2,Subgroup,trial), n = n(),
+                          meanE=mean(error,na.rm = T), sd=sd(error,na.rm = T),se = sd/sqrt(n))
+
+
+ggplot(data = mtTPlot, aes(x=trial, y=meanT, color = Subgroup))+
+  geom_line() +geom_point()  +
+  scale_color_manual(values=c('red','blue'))+
+  geom_errorbar(aes(ymin=meanT-se,ymax=meanT+se),
+                width=.1,  size=0.5)+
+  scale_x_continuous(breaks=seq(0,10,1))+
+  #scale_y_continuous(limits = c(0.2, 0.5))+
+  theme(
+    axis.title = element_text(family = "Trebuchet MS", size = 20),
+    legend.key.size = unit(1, "cm"),
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15))  +
+  labs(x = "Trials", y = "Completion Time (secs)") +
+  theme(panel.background = element_rect(fill = "white", colour = "grey50")) +
+  theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
+```
+
+
+```{r, echo=FALSE,warning = FALSE}
+ggplot(data = mtEPlot, aes(x=trial, y=meanE, color = Subgroup))+
+  geom_line() +geom_point()  +
+  scale_color_manual(values=c('red','blue'))+
+  geom_errorbar(aes(ymin=meanE-se,ymax=meanE+se),
+                width=.1,  size=0.5)+
+  scale_x_continuous(breaks=seq(0,10,1))+
+  #scale_y_continuous(limits = c(0.2, 0.5))+
+  theme(
+    axis.title = element_text(family = "Trebuchet MS", size = 20),
+    legend.key.size = unit(1, "cm"),
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15))  +
+  labs(x = "Trials", y = "Errors") +
+  theme(panel.background = element_rect(fill = "white", colour = "grey50")) +
+  theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
+```
+
+## Mirror Tracing Slopes
+
+Significant group effects for error and time, with steeper slopes in Typ as compared to Dys
+
+###Error Slopes
+```{r, echo=FALSE,warning = FALSE,include=FALSE}
+mt3<-na.omit(mt2)
+d_glm_fit_list <- vector(mode = "list", length = nrow(rp)*2)
+index <- 0
+abcd_ids=unique(mt3$PartID)
+b_list5=c()
+m_list5 = c()
+
+for (subj in abcd_ids) {
+ # print(subj)
+  d_subj <- filter(mt3, PartID==subj)
+  subj_model <- glm(error ~ trial, #errors
+                    data = d_subj)
+  b_list5[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
+  m_list5[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
+}
+```
+
+###Time slopes
+```{r, echo=FALSE,warning = FALSE,include=FALSE}
+d_glm_fit_list <- vector(mode = "list", length = nrow(rp)*2)
+index <- 0
+abcd_ids=unique(mt3$PartID)
+b_list7=c()
+m_list7 = c()
+
+for (subj in abcd_ids) {
+ print(subj)
+  d_subj <- filter(mt3, PartID==subj)
+  subj_model <- glm(time ~ trial, #errors
+                    data = d_subj)
+  b_list7[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
+  m_list7[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
+}
+
+
+#new data frame containing the mirror slopes
+mt_data <- data.frame(PartID=abcd_ids,slope_me = m_list5, slope_mt = m_list7)
+mt_data$slope_me<-as.numeric(mt_data$slope_me)
+#mt_data=mt_data%>%dplyr::filter(slope_me>-300)
+hist(mt_data$slope_mt)
+mt_data<-mt_data%>%filter(mt_data$slope_mt<0) #filter out postitive slopes
+mt_data$slope_mt<-abs(mt_data$slope_mt)
+mt_data$slope_me<-abs(mt_data$slope_me)
+
+d_3 <- d %>%
+   select("PartID","Subgroup", "background_age","background_sex")
+
+d_mt <- left_join(mt_data, d_3, by = "PartID")
+d2<-merge(d_rp,d_mt)
+table(d2$Subgroup)
+```
+
+
+- A significant group effects for slope, with faster learning for Typ, even after controlling for age, sex, and IQ.
+- Removed participants with slopes abova zero (opposite learning pattern)
+
+```{r, echo=FALSE,warning = FALSE}
+m3<-lm(slope_mt~background_age+background_sex+kbit_ss+Subgroup, data=d2,na.action = na.exclude)
+summary(m3)
+lsmeans(m3, list(pairwise ~ Subgroup), adjust = "tukey")
+m4<-lm(slope_me~background_age+background_sex+kbit_ss+Subgroup, data=d2,na.action = na.exclude)
+summary(m4)
+lsmeans(m4, list(pairwise ~ Subgroup), adjust = "tukey")
+
+```
+
+## MT: Plot Slope Effects
+
+```{r, echo=FALSE,warning = FALSE}
+
+mt_slope<-d2%>%dplyr::select("PartID","Subgroup","slope_mt")
+mt_slope$Subgroup<-as.factor(mt_slope$Subgroup)
+
+mt_slope2<-mt_slope%>%dplyr::select('PartID',"Subgroup","slope_mt")
+mt_slope2<-na.omit(mt_slope2)
+
+multi.group_mt = mt_slope2 %>%
+  dplyr::group_by(PartID, Subgroup) %>%
+  dplyr::summarise(mean = mean(slope_mt, na.rm = T))
+
+
+multi.group_mt <-
+  multi.group_mt %>%
+  dabestr::dabest(Subgroup,mean,
+         idx = list(c("TYP",'DD')),
+         paired = FALSE)
+two.group.unpaired.meandiff_mt <- dabestr::mean_diff(multi.group_mt)
+
+plot(two.group.unpaired.meandiff_mt, palette=c("blue","red"),rawplot.ylabel = "MT Time Slope")
+```
+
+
+```{r, echo=FALSE,warning = FALSE}
+me_slope<-d2%>%dplyr::select("PartID","Subgroup","slope_me")
+
+me_slope2<-na.omit(me_slope)
+
+multi.group_me = me_slope2 %>%
+  dplyr::group_by(PartID, Subgroup) %>%
+  dplyr::summarise(mean = mean(slope_me, na.rm = T))
+
+
+multi.group_me <-
+  multi.group_me %>%
+  dabestr::dabest(Subgroup,mean,
+         idx = list(c("TYP",'DD')),
+         paired = FALSE)
+two.group.unpaired.meandiff_me <- dabestr::mean_diff(multi.group_me)
+
+plot(two.group.unpaired.meandiff_me, palette=c("blue","red"),rawplot.ylabel = "MT Error Slope")
+```
+
+# Statistical Learning
+```{r, echo=FALSE,warning = FALSE}
+names(SL)[names(SL) == "subj"] <- "PartID"
+d_all<-merge(d,rp_data,all = TRUE)
+d_all <-merge(d_all,mt_data,all=TRUE)
+d_all <-merge(d_all,SL,all=TRUE)
+table(SL$group)
+```
+
+## Slope analyses
+```{r,echo=FALSE,warning = FALSE}
+subj_table_vsl<-read.csv("sl_analysis/vsl_rt_subj_table.csv")
+fam_trial_vsl<-read.csv("sl_analysis/vsl_rt_trial.csv")
+fam_trial_vsl_scale<-read.csv("sl_analysis/vsl_rt_scale_trial.csv")
+subj_table_tsl<-read.csv("sl_analysis/tsl_rt_subj_table.csv")
+fam_trial_tsl<-read.csv("sl_analysis/tsl_rt_trial.csv")
+fam_trial_tsl_scale<-read.csv("sl_analysis/tsl_rt_scale_trial.csv")
+
+#need to rename from Subj  to PartID
+names(subj_table_vsl)[names(subj_table_vsl)=="subj"] <- "PartID"
+names(fam_trial_vsl)[names(fam_trial_vsl)=="subj"] <- "PartID"
+names(fam_trial_vsl_scale)[names(fam_trial_vsl_scale)=="subj"] <- "PartID"
+names(subj_table_tsl)[names(subj_table_tsl)=="subj"] <- "PartID"
+names(fam_trial_tsl)[names(fam_trial_tsl)=="subj"] <- "PartID"
+names(fam_trial_tsl_scale)[names(fam_trial_tsl_scale)=="subj"] <- "PartID"
+
+
+```
+
+###ASL Slope Effects
+```{r, echo=FALSE,warning = FALSE}
+data<-as_tibble(subj_table_tsl)
+data %>%
+  group_by(Subgroup) %>%
+  dplyr::summarise(
+          count = n(),
+          rt = qwraps2::mean_sd(mean_rt),
+          slope = qwraps2::mean_sd(rt_slope),
+          d_prime = qwraps2::mean_sd(dprime),
+          hits = qwraps2::mean_sd(hit_rate)
+          )
+```
+* remove outliers who have hit rate lower than and equal to 0.25 (remaining participant: 14 DD and 18 TYP)
+* participants removed from analysis: ABCD_1705 ABCD_1720 ABCD_1747 ABCD_1767 ABCD_1783 ABCD_1788 ABCD_1709 ABCD_1724
+
+```{r,echo=FALSE,warning=FALSE}
+usable_tsl_rt<-subj_table_tsl[subj_table_tsl$hit_rate>0.25,]$PartID
+subj_table_tsl_usable <-subset(subj_table_tsl,PartID %in% usable_tsl_rt)
+data<-as_tibble(subj_table_tsl_usable)
+data %>%
+  group_by(Subgroup) %>%
+  dplyr::summarise(
+          count = n(),
+          rt = qwraps2::mean_sd(mean_rt),
+          slope = qwraps2::mean_sd(rt_slope),
+          d_prime = qwraps2::mean_sd(dprime),
+          hits = qwraps2::mean_sd(hit_rate)
+          )
+```
+* the two groups are not different in RT slope.
+```{r,echo=FALSE,warning=FALSE}
+t.test(dprime~Subgroup,data=subj_table_tsl_usable)
+t.test(rt_slope~Subgroup,data=subj_table_tsl_usable)
+fam_trial_tsl_usable <-subset(fam_trial_tsl,PartID %in% usable_tsl_rt)
+fam_trial_tsl_usable_s <-subset(fam_trial_tsl_scale,PartID %in% usable_tsl_rt)
+model1 <- lm(rt_col~reindex*Subgroup,data=fam_trial_tsl_usable)
+print(summary(model1))
+model1_scale <-lm(rt_col~reindex*Subgroup,data=fam_trial_tsl_usable_s)
+print(summary(model1_scale))
+model2 <- lmer(rt_col~reindex*Subgroup+(1|PartID)+(0+reindex|PartID),data=fam_trial_tsl_usable)
+print(summary(model2))
+model2_scale <- lmer(rt_col~reindex*Subgroup+(1|PartID)+(0+reindex|PartID),data=fam_trial_tsl_usable_s)
+print(summary(model2_scale))
+```
+##Plot of TSL RT
+### RT as the function of Target repetition
+```{r,echo=FALSE}
+tsl_rt_plot<-dplyr::summarise(group_by(fam_trial_tsl,Subgroup,reindex), n = n(),
+                         mean=mean(rt_col,na.rm = T), sd=sd(rt_col,na.rm = T),se = sd/sqrt(n))
+
+ggplot(data = tsl_rt_plot, aes(x=reindex, y=mean, color = Subgroup))+
+  geom_line() +geom_point()  +
+  scale_color_manual(values=c('red','blue'))+
+  geom_errorbar(aes(ymin=mean-se,ymax=mean+se),
+                 width=.1,  size=0.5)+
+  scale_x_continuous(breaks=seq(4,48,4))+
+  #scale_y_continuous(limits = c(0.2, 0.5))+
+  theme(
+    axis.title = element_text(family = "Trebuchet MS", size = 20),
+    legend.key.size = unit(1, "cm"),
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15))  +
+  labs(x = "Trials", y = "Response Time (ms)") +
+  theme(panel.background = element_rect(fill = "white", colour = "grey50")) +
+  theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
+```
+### plot Scaled RT slope across the two groups
+* mean RT slope
+```{r,echo=FALSE}
+asl_slope<-d_all%>%dplyr::select("PartID","Subgroup","aud_slope_scale")
+
+asl_slope<-na.omit(asl_slope)
+
+asl_slope2 = asl_slope %>%
+  dplyr::group_by(PartID, Subgroup) %>%
+  dplyr::summarise(mean = mean(aud_slope_scale, na.rm = T))
+
+multi.group_asl <-
+ asl_slope2 %>%
+  dabestr::dabest(Subgroup,mean,
+         idx = list(c("TYP","DD")),
+         paired = FALSE
+  )
+
+multi.group_asl_2 <- dabestr::mean_diff(multi.group_asl)
+
+plot(multi.group_asl_2, palette=c("blue","red"),rawplot.ylabel = "ASL Time Slope")
+```
+
+##VSL Slope Analysis
+```{r,echo=FALSE,warning=FALSE}
+data<-as_tibble(subj_table_vsl)
+data %>%
+  group_by(Subgroup) %>%
+  dplyr::summarise(
+          count = n(),
+          rt = qwraps2::mean_sd(mean_rt),
+          slope = qwraps2::mean_sd(rt_slope),
+          d_prime = qwraps2::mean_sd(dprime)
+          )
+```
+* The DD group had a faster RT acceleration than the TYP group tested by linear regression models
+```{r,echo=FALSE,warning=FALSE}
+model1 <- lm(rt_col~reindex*Subgroup,data=fam_trial_vsl)
+print(summary(model1))
+model1_scale <- lm(rt_col~reindex*Subgroup,data=fam_trial_vsl_scale)
+print(summary(model1_scale))
+```
+* marginal results with the raw RT data and significant results (same as linear regression) with the scaled data tested by lmer.
+```{r,echo=FALSE,warning=FALSE}
+library(lmerTest)
+model2 <- lmer(rt_col~Subgroup*reindex + (1|PartID)+(0+reindex|PartID),data=fam_trial_vsl)
+print(summary(model2))
+model2_scale <- lmer(rt_col~Subgroup*reindex + (1|PartID)+(0+reindex|PartID),data=fam_trial_vsl_scale)
+print(summary(model2_scale))
+```
+##Plot of VSL RT
+### RT as the function of Target repetition
+```{r,echo=FALSE}
+vsl_rt_plot<-dplyr::summarise(group_by(fam_trial_vsl,Subgroup,reindex), n = n(),
+                         mean=mean(rt_col,na.rm = T), sd=sd(rt_col,na.rm = T),se = sd/sqrt(n))
+
+ggplot(data = vsl_rt_plot, aes(x=reindex, y=mean, color = Subgroup))+
+  geom_line() +geom_point()  +
+  scale_color_manual(values=c('red','blue'))+
+  geom_errorbar(aes(ymin=mean-se,ymax=mean+se),
+                 width=.1,  size=0.5)+
+  scale_x_continuous(breaks=seq(2,24,2))+
+  #scale_y_continuous(limits = c(0.2, 0.5))+
+  theme(
+    axis.title = element_text(family = "Trebuchet MS", size = 20),
+    legend.key.size = unit(1, "cm"),
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15))  +
+  labs(x = "Trials", y = "Response Time (ms)") +
+  theme(panel.background = element_rect(fill = "white", colour = "grey50")) +
+  theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
+```
+### plot mean RT slope across the two groups
+* mean RT slope
+```{r, echo=FALSE,warning = FALSE}
+vsl_slope<-d_all%>%dplyr::select("PartID","Subgroup","vis_slope_scale")
+
+vsl_slope<-na.omit(vsl_slope)
+
+vsl_slope2 = vsl_slope %>%
+  dplyr::group_by(PartID, Subgroup) %>%
+  dplyr::summarise(mean = mean(vis_slope_scale, na.rm = T))
+
+multi.group_vsl <-
+ vsl_slope2 %>%
+  dabestr::dabest(Subgroup,mean,
+         idx = list(c("TYP","DD")),
+         paired = FALSE
+  )
+
+multi.group_vsl_2 <- dabestr::mean_diff(multi.group_vsl)
+
+plot(multi.group_vsl_2, palette=c("blue","red"),rawplot.ylabel = "VSL Slope")
+
+```
+
+## Combine slope data of both tasks
+```{r,echo=FALSE,warning=FALSE}
+colnames(subj_table_tsl_usable)[1]="subj"
+colnames(subj_table_vsl)[1]="subj"
+subj_table_tsl_usable$task = "Auditory"
+subj_table_vsl$task = "Visual"
+all_subj_slope = rbind(subj_table_vsl,subj_table_tsl_usable)
+fam_trial_vsl_scale$task="Visual"
+fam_trial_tsl_usable_s$task="Auditory"
+all_fam_trials = rbind(fam_trial_vsl_scale,fam_trial_tsl_usable_s)
+```
+
+### check interactions between task and group, using scaled RT: No interaction; anova showed marginal main effect of group (TYP is slower)
+```{r,echo=FALSE,warning=FALSE}
+all_subj_slope$tasknum=""
+for (id in all_subj_slope$subj) {
+  all_subj_slope[all_subj_slope$subj==id,]$tasknum = nrow(all_subj_slope[all_subj_slope$subj==id,])
+}
+all_subj_slope_complete = subset(all_subj_slope,tasknum==2)
+model_rt <- aov(rt_slope_scale~task*Subgroup+mean_rt+Error(subj/task),data=all_subj_slope_complete) # controlling for mean rt.
+print(summary(model_rt))
+model_rt_lmer <- lmer(rt_col~task*Subgroup+(1+task|PartID)+(1|reindex),data=all_fam_trials)
+print(summary(model_rt_lmer))
+```
+### Mean RT sanity check
+No significant differences in RT for either task.
+```{r,echo=FALSE,warning = FALSE}
+m6<-lm(aud_fam_rt~background_age+background_sex+Subgroup, data=d_all,na.action = na.exclude)
+anova(m6)
+
+m7<-lm(vis_fam_rt~background_age+background_sex+Subgroup, data=d_all,na.action = na.exclude)
+anova(m7)
+```
+# SL accuracy analysis
+## Accuracy Data Summary (mean +/- sd)
+```{r,echo=FALSE,warning=FALSE}
+all_accuracy=read.csv("sl_analysis/all_sl_accuracy.csv")
+all_acc_table=read.csv("sl_analysis/sl_acc_subj_table.csv")#THIS FILE IS NOT IN DIRECTORY
+data<-as_tibble(all_acc_table)
+data %>%
+  group_by(Subgroup,task) %>%
+  dplyr::summarise(
+          count = n(),
+          accuracy = qwraps2::mean_sd(subj_corr)
+          )
+```
+##Look into group performance between Dyl and Typ
+### simple t test: both groups performed above chance for both tasks
+```{r,echo=FALSE,warning=FALSE}
+DD_acc_vsl <- NULL
+DD_acc_tsl <- NULL
+TYP_acc_vsl <- NULL
+TYP_acc_tsl <- NULL
+
+for(id in DD){
+  DD_acc_vsl<- append(DD_acc_vsl,vsl_acc_table$subj_corr[vsl_acc_table$PartID==id])
+  DD_acc_tsl<- append(DD_acc_tsl,tsl_acc_table$subj_corr[tsl_acc_table$PartID==id])
+}
+
+for(id in TYP){
+  TYP_acc_vsl<- append(TYP_acc_vsl,vsl_acc_table$subj_corr[vsl_acc_table$PartID==id])
+  TYP_acc_tsl<- append(TYP_acc_tsl,tsl_acc_table$subj_corr[tsl_acc_table$PartID==id])
+}
+
+t.test(DD_acc_vsl,mu=0.5,alternative = "greater")
+t.test(DD_acc_tsl,mu=0.5,alternative = "greater")
+
+t.test(TYP_acc_vsl,mu=0.5,alternative = "greater")
+t.test(TYP_acc_tsl,mu=0.5,alternative = "greater")
+```
+### anova: marginal main effect of task and marginal interaction between task and group
+```{r,echo=FALSE,warning=FALSE}
+all_acc_table_complete = subset(all_acc_table,PartID!="ABCD_1708")
+all_acc_table_complete = subset(all_acc_table_complete,PartID!="ABCD_1727")
+model_acc <- aov(subj_corr~task*Subgroup+Error(PartID/task),data=all_acc_table_complete)
+print(summary(model_acc))
+```
+### A t-test to compare between Dylexia and Typical group
+In tsl
+```{r,echo=FALSE}
+t.test(DD_acc_tsl,TYP_acc_tsl)
+```
+In vsl
+```{r,echo=FALSE}
+t.test(DD_acc_vsl,TYP_acc_vsl)
+```
+### generalized linear effect modeling: main effect of task (visual > auditory); main effect of group (TYP > DD); marginal interaction between task and group
+```{r,echo=FALSE}
+model_acc_lmer <- glmer(corr~task*Subgroup+(1+task|PartID)+(1|trial),data=all_accuracy,family="binomial")
+print(summary(model_acc_lmer))
+```
+### generalized linear effect modeling within each task
+```{r,echo=FALSE}
+vsl_accuracy = subset(all_accuracy,task=="Visual")
+tsl_accuracy = subset(all_accuracy,task=="Auditory")
+
+model_vslacc_lmer <- glmer(corr~Subgroup+(1|PartID)+(1|trial),data=vsl_accuracy,family="binomial")
+print(summary(model_vslacc_lmer))
+
+model_tslacc_lmer <- glmer(corr~Subgroup+(1|PartID)+(1|trial),data=tsl_accuracy,family="binomial")
+print(summary(model_tslacc_lmer))
+```
+## plot the accuracy by group and task
+```{r,echo=FALSE}
+stat.test <- all_acc_table %>%
+  group_by(task) %>%
+  tukey_hsd(subj_corr~Subgroup)
+stat.test
+stat.test <- stat.test %>% add_xy_position(x = "group", fun = "mean_se")
+all_acc_table$Subgroup = as.factor(all_acc_table$Subgroup)
+ggbarplot(all_acc_table, x = "Subgroup", y = "subj_corr", fill =
+            "Subgroup", add = "mean_se", facet.by = c("task")) +
+  facet_wrap(vars(task),scales="free")+
+  stat_pvalue_manual(stat.test, hide.ns = TRUE, tip.length = 0, step.increase = 0) +
+  scale_y_continuous(expand = expansion(mult = c(0.05, 0.15))) +
+  scale_fill_brewer(palette = 'Set1') +
+  ylab(label = '% Correct') +
+  xlab(label = 'Group')
+```
+## alternative plots
+```{r,echo=FALSE}
+ggplot() +
+  geom_bar(aes(x = Subgroup,y = subj_corr,fill = Subgroup),data=all_acc_table,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
+  theme_classic(base_size = 18.0) +
+  ylab(label = '% Correct') +
+  xlab(label = 'Group') +
+  #coord_cartesian(ylim = c(0.3,1)) +
+  geom_errorbar(aes(y = subj_corr, x = Subgroup),data=all_acc_table,size = 0.3,width = 0.2,fun.y = function(x) mean(x),fun.ymin = function(x) mean(x) - sd(x)/sqrt(length(x)),fun.ymax = function(x) mean(x) + sd(x)/sqrt(length(x)) ,stat = 'summary')+
+  geom_beeswarm(aes(x = Subgroup,y = subj_corr, colour = Subgroup),data=all_acc_table,dodge.width=0.9,cex=2.5) +
+  facet_wrap(task~.) +
+  scale_fill_brewer(palette = 'Set1') +
+  scale_color_manual(values=cbbPalette)
+```
+# Cross-task correlations
+```{r,include=FALSE,warning = FALSE}
+d_all_dys = subset(d_all,Subgroup == "DD")
+d_all_typ = subset(d_all,Subgroup == "TYP")
+task_data<-d_all%>%select(kbit_ss_2,gort_ori_ss_2,ctopp_nonword_raw_2,ctopp_elision_raw_2,ctopp_blending_raw_2,wais_dsb_ss_2,slopeProp_On,slope_mt_t,slope_me_t,vis_slope_scale,aud_slope_scale,,vis_acc,aud_acc,quicksin_snr_loss_2)
+task_data_dys<-d_all_dys%>%select(kbit_ss_2,gort_ori_ss_2, wrmt_id_ss_2,wrmt_wa_ss_2,towre_sw_ss_2,towre_pde_ss_2, slopeProp_On, slope_mt,slope_me,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)
+task_data_typ<-d_all_typ%>%select(kbit_ss_2,gort_ori_ss_2, wrmt_id_ss_2,wrmt_wa_ss_2,towre_sw_ss_2,towre_pde_ss_2, slopeProp_On,slope_mt,slope_me,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)
+corstars(task_data,method="pearson")#you need to run the function first
+```
+
+###Everyone
+```{r, echo=FALSE}
+corstars(task_data,method="pearson")#you need to run the function first
+
+```
+###Dys only
+both the rotary pursuit and ASL accuracy/RT are related to reading
+
+```{r, echo=FALSE}
+corstars(task_data_dys,method="pearson")#you need to run the function first
+```
+
+###Typ only
+better VSL is related to worse reading...
+```{r, echo=FALSE}
+corstars(task_data_typ,method="pearson")#you need to run the function first
+```
