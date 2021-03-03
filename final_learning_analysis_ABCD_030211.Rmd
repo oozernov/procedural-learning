@@ -770,6 +770,10 @@ anova(m7)
 ```{r,echo=FALSE,warning=FALSE}
 all_accuracy=read.csv("sl_analysis/all_sl_accuracy.csv")
 all_acc_table=read.csv("sl_analysis/sl_acc_subj_table.csv")#THIS FILE IS NOT IN DIRECTORY
+vsl_acc_table=subset(all_acc_table,task=="Visual")
+tsl_acc_table=subset(all_acc_table,task="Auditory")
+vsl_accuracy=subset(all_accuracy,task="Visual")
+tsl_accuracy=subset(all_accuracy,task="Auditory")
 data<-as_tibble(all_acc_table)
 data %>%
   group_by(Subgroup,task) %>%
@@ -785,6 +789,9 @@ DD_acc_vsl <- NULL
 DD_acc_tsl <- NULL
 TYP_acc_vsl <- NULL
 TYP_acc_tsl <- NULL
+DD <- list("ABCD_1711", "ABCD_1714", "ABCD_1727", "ABCD_1735", "ABCD_1751", "ABCD_1756", "ABCD_1764", "ABCD_1767", "ABCD_1768", "ABCD_1776","ABCD_1777","ABCD_1778", "ABCD_1781", "ABCD_1784", "ABCD_1787", "ABCD_1792", "ABCD_1794")
+
+TYP <- list("ABCD_1702", "ABCD_1703", "ABCD_1705", "ABCD_1708", "ABCD_1709", "ABCD_1710", "ABCD_1716", "ABCD_1720", "ABCD_1721", "ABCD_1724", "ABCD_1725", "ABCD_1728", "ABCD_1729", "ABCD_1730", "ABCD_1732", "ABCD_1734", "ABCD_1736", "ABCD_1739", "ABCD_1742", "ABCD_1747", "ABCD_1749", "ABCD_1754", "ABCD_1783", "ABCD_1788" )
 
 for(id in DD){
   DD_acc_vsl<- append(DD_acc_vsl,vsl_acc_table$subj_corr[vsl_acc_table$PartID==id])
@@ -842,17 +849,10 @@ stat.test <- all_acc_table %>%
 stat.test
 stat.test <- stat.test %>% add_xy_position(x = "group", fun = "mean_se")
 all_acc_table$Subgroup = as.factor(all_acc_table$Subgroup)
-ggbarplot(all_acc_table, x = "Subgroup", y = "subj_corr", fill =
-            "Subgroup", add = "mean_se", facet.by = c("task")) +
-  facet_wrap(vars(task),scales="free")+
-  stat_pvalue_manual(stat.test, hide.ns = TRUE, tip.length = 0, step.increase = 0) +
-  scale_y_continuous(expand = expansion(mult = c(0.05, 0.15))) +
-  scale_fill_brewer(palette = 'Set1') +
-  ylab(label = '% Correct') +
-  xlab(label = 'Group')
 ```
 ## alternative plots
 ```{r,echo=FALSE}
+cbbPalette <- c("#000000","#000000")
 ggplot() +
   geom_bar(aes(x = Subgroup,y = subj_corr,fill = Subgroup),data=all_acc_table,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
   theme_classic(base_size = 18.0) +
@@ -869,7 +869,7 @@ ggplot() +
 ```{r,include=FALSE,warning = FALSE}
 d_all_dys = subset(d_all,Subgroup == "DD")
 d_all_typ = subset(d_all,Subgroup == "TYP")
-task_data<-d_all%>%select(kbit_ss_2,gort_ori_ss_2,ctopp_nonword_raw_2,ctopp_elision_raw_2,ctopp_blending_raw_2,wais_dsb_ss_2,slopeProp_On,slope_mt_t,slope_me_t,vis_slope_scale,aud_slope_scale,,vis_acc,aud_acc,quicksin_snr_loss_2)
+task_data<-d_all%>%select(kbit_ss_2,gort_ori_ss_2,ctopp_nonword_raw_2,ctopp_elision_raw_2,ctopp_blending_raw_2,wais_dsb_ss_2,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,,vis_acc,aud_acc,quicksin_snr_loss_2)
 task_data_dys<-d_all_dys%>%select(kbit_ss_2,gort_ori_ss_2, wrmt_id_ss_2,wrmt_wa_ss_2,towre_sw_ss_2,towre_pde_ss_2, slopeProp_On, slope_mt,slope_me,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)
 task_data_typ<-d_all_typ%>%select(kbit_ss_2,gort_ori_ss_2, wrmt_id_ss_2,wrmt_wa_ss_2,towre_sw_ss_2,towre_pde_ss_2, slopeProp_On,slope_mt,slope_me,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)
 corstars(task_data,method="pearson")#you need to run the function first
