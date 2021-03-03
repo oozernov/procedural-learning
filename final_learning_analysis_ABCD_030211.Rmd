@@ -18,7 +18,7 @@ knitr::opts_chunk$set(echo = TRUE)
 #import packages
 Packages <- c("dplyr", "stats", "psych", "ggplot2", "lme4",
               "gridExtra", "dplyr","caret","tidyverse",
-              "plyr","lmerTest","ggpubr","nlme","emmeans"
+              "plyr","lmerTest","ggpubr","nlme","emmeans","rstatix","ggbeeswarm"
 )
 
 lapply(Packages, library, character.only = TRUE)
