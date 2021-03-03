@@ -6,6 +6,7 @@ output:
   word_document: default
   html_document:
     df_print: paged
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -63,8 +64,6 @@ local({
 
 # Rotary Pursuit
 
-Question for JDE: Factor or continuous for trial?
-
 ```{r, include=FALSE}
 ## Extract and organize tasks
 PL<-d[c(1,188,3:4,54:70,71:80)]
@@ -108,8 +107,10 @@ data_tmp4check[data_tmp4check$trial !=16,1]
 hist(rp2$prop_on)
 ```
 
-### Statstical Analysis by Trial
-There is no significant group difference in baseline speed for RP.
+### RP Statstical Analysis by Trial
+
+#### RP Baseline differences
+- There is no significant group difference in baseline speed for RP.
 ```{r,echo=FALSE,warning = FALSE}
 t.test(d$rotarypursuit_0_2~d$Subgroup)
 ```
@@ -121,20 +122,46 @@ rp2$Subgroup = as.factor(rp2$Subgroup)
 rp2_age_gender_iq = merge(rp2,d[,c(1,3,4,6)],all.x=TRUE)
 ```
 
-#### Linear mixed-effect modeling:
+#### RP Linear mixed-effect modeling
 - model with trial and participant as random effects (controlling for age and sex)
-- it doesn't make sense to me to model trial as a random effect
-```{r, echo=FALSE,warning = FALSE,include=FALSE}
+- borderline significant effect trial x subgroup (fasrer learning in Dys)
+```{r, echo=FALSE,warning = FALSE}
 lmerrp1 <- lmer(prop_on~Subgroup*trial +background_age+background_sex + (1|PartID),data=rp2_age_gender_iq)
 lmerrp2 <- lmer(prop_on~Subgroup*trial +background_age+background_sex + (1+trial|PartID),data=rp2_age_gender_iq)
 anova(lmerrp1,lmerrp2)
 summary(lmerrp2) #borderline significant effect for Subgroup x trial
+
 ```
 
-## Slope Analysis
+#### RP Plot by trial 
 
+```{r, echo=FALSE,warning = FALSE}
 
-```{r, echo=FALSE, include=FALSE}
+rp2$trial<-as.integer(rp2$trial)
+
+rpPlot<-dplyr::summarise(group_by(rp2,Subgroup,trial), n = n(),
+                         mean=mean(prop_on,na.rm = T), sd=sd(On/(On+Off),na.rm = T),se = sd/sqrt(n))
+
+ggplot(data = rpPlot, aes(x=trial, y=mean, color = Subgroup))+
+  geom_line() +geom_point()  +
+  scale_color_manual(values=c('red','blue'))+
+  geom_errorbar(aes(ymin=mean-se,ymax=mean+se),
+                 width=.1,  size=0.5)+
+  scale_x_continuous(breaks=seq(1,16,1))+
+  #scale_y_continuous(limits = c(0.2, 0.5))+
+  theme(
+    axis.title = element_text(family = "Trebuchet MS", size = 20),
+    legend.key.size = unit(1, "cm"),
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15))  +
+  labs(x = "Trials", y = "Proportion On (secs)") +
+  theme(panel.background = element_rect(fill = "white", colour = "grey50")) +
+  theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
+```
+
+### RP Slope Analysis
+
+```{r, echo=FALSE, include=FALSE,warning = FALSE}
 d_glm_fit_list <- vector(mode = "list", length = nrow(rp)*2)
 index <- 0
 abcd_ids=unique(rp2$PartID)
@@ -198,48 +225,23 @@ rp_data <- data.frame(PartID=abcd_ids,slopeOn = m_list, slopeOff = m_list2, slop
 d_rp<-merge(d,rp_data) 
 ```
 
-```{r, echo=FALSE,include=FALSE}
+```{r, echo=FALSE,include=FALSE, warning = FALSE}
 hist(d_rp$slopeProp_On)
 d_rp=d_rp%>%filter(d_rp$slopeProp_On>0) #remove negative slopes
 
 ```
 
-
-## Plot Rotary Pursuit
-
-```{r, echo=FALSE,warning = FALSE}
-rp2$trial<-as.integer(rp2$trial)
-
-rpPlot<-dplyr::summarise(group_by(rp2,Subgroup,trial), n = n(),
-                         mean=mean(prop_on,na.rm = T), sd=sd(On/(On+Off),na.rm = T),se = sd/sqrt(n))
-
-ggplot(data = rpPlot, aes(x=trial, y=mean, color = Subgroup))+
-  geom_line() +geom_point()  +
-  scale_color_manual(values=c('red','blue'))+
-  geom_errorbar(aes(ymin=mean-se,ymax=mean+se),
-                 width=.1,  size=0.5)+
-  scale_x_continuous(breaks=seq(1,16,1))+
-  #scale_y_continuous(limits = c(0.2, 0.5))+
-  theme(
-    axis.title = element_text(family = "Trebuchet MS", size = 20),
-    legend.key.size = unit(1, "cm"),
-    axis.text.x = element_text(size = 15),
-    axis.text.y = element_text(size = 15))  +
-  labs(x = "Trials", y = "Proportion On (secs)") +
-  theme(panel.background = element_rect(fill = "white", colour = "grey50")) +
-  theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
-```
-
-## ANCOVA on individual slope
-- marginal group effect on slope
-- should we control for IQ?
+#### ANCOVA on individual RP slopes
+- Excluded negative slopes (n=5)
+- No significant group effect on slope
+- Should we control for IQ?
 ```{r, echo=FALSE,warning = FALSE}
 m2<-lm(slopeProp_On~background_sex+background_age+kbit_ss+Subgroup, data=d_rp)
 summary(m2)
-lsmeans(m2, list(pairwise ~ Subgroup), adjust = "tukey") #p=0.08
+lsmeans(m2, list(pairwise ~ Subgroup), adjust = "tukey") 
 ```
 
-## Plotting RP Slope Effects
+#### Plotting RP Slope Effects
 ```{r, echo=FALSE,warning = FALSE}
 plot_rp_slope<-d_rp%>%dplyr::select('PartID',"Subgroup","slopeProp_On")
 plot_rp_slope<-na.omit(plot_rp_slope)
@@ -254,7 +256,7 @@ multi.group3 <-
   dabestr::dabest(Subgroup,mean,
          idx = list(c("TYP",'DD')),
          paired = FALSE)
-two.group.unpaired.meandiff <- dabestr::mean_diff(multi.group3)
+two.group.unpaired.meandiff <- dabestr::cohens_d(multi.group3)
 plot(two.group.unpaired.meandiff, palette=c("blue","red"),rawplot.ylabel = "RP Prop On Slope")
 ```
 
@@ -288,10 +290,7 @@ mt$trial <- as.numeric(mt$trial)
 ```
 
 
-```{r,include=FALSE}
-
-## QC
-#Should we exclude outliers?
+```{r,include=FALSE, warning=FALSE}
 
 # Check # of trials per each subject
 data_tmp4check <- aggregate(error ~ PartID * Subgroup, FUN=NROW, data = mt )
@@ -314,43 +313,33 @@ mt2$Subgroup<-as.factor(mt2$Subgroup)
 ```
 
 ### Statistical Analysis by Trial
-Significant group differences in learning across trials for time, but not error, with better learning for Typ.  Differences survive after controlling for age, sex, and IQ
 
-```{r, echo=FALSE,include=FALSE}
-mt2$PartID<-as.factor(mt2$PartID)
+#### Baseline differences on trial one
+```{r, echo=FALSE,include=FALSE, warning = FALSE}
+mt2$Subgroup<-as.factor(mt2$Subgroup)
+mt2 = merge(mt2,d[,c(1,3,4,6)],all.x=TRUE)
+
 #extract trial 1
 mt_1<-mt2%>%
-  dplyr::filter(trial==1|trial==2)%>%
-  dplyr::group_by(PartID)%>%
-  dplyr::summarize(t12=mean(time,na.omit=TRUE))
+  dplyr::filter(trial==1)
 me_1<-mt2%>%
-  dplyr::filter(trial==1|trial==2)%>%
-  dplyr::group_by(PartID)%>%
-  dplyr::summarize(e12=mean(error,na.omit=TRUE))
-
-mt2<-merge(mt_1,mt2,"PartID")
-mt2<-merge(me_1,mt2,"PartID")
-
-#and run the model controlling for it
-
-m3<-lm(time~t12+Subgroup*trial,
-        data=mt2)
-summary(m3) #trial is significant
-
-m4<-lm(error~e12+Subgroup*trial,
-        data=mt2)
-
-summary(m4) #trial
-```
-
-```{r, echo=FALSE,warning = FALSE}
-mt3<-mt2%>%filter(trial!=1) #exclude trial 1
+  dplyr::filter(trial==1)
 
 ```
 
-### linear mixed modeling
-main effect of trial, no effect of subgroups
+- No significant group differences on first trial
+```{r,warning = FALSE}
+summary(lm(time~background_age+background_sex+kbit_ss+Subgroup,data=me_1))
+summary(lm(time~background_age+background_sex+kbit_ss+Subgroup,data=mt_1))
+```
+
+### Linear mixed modeling
+- Filtered out first trial
+- Main effect of trial, no significant effect of subgroup on time or error
 ```{r, echo=FALSE,warning = FALSE,include=FALSE}
+mt1<-mt2
+mt2<-mt2%>%filter(trial!=1) #exclude trial 1
+#mt2$PartID<-as.factor(mt2$PartID)
 mt2_age_gender_iq = merge(mt2,d[,c(1,3,4,6)],all.x=TRUE)
 
 lmerm1<-lmer(time~background_age+background_sex+kbit_ss+Subgroup*trial+(1+trial|PartID),
@@ -422,11 +411,8 @@ ggplot(data = mtEPlot, aes(x=trial, y=meanE, color = Subgroup))+
   theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
 ```
 
-## Mirror Tracing Slopes
+### Mirror Tracing Slopes
 
-Significant group effects for error and time, with steeper slopes in Typ as compared to Dys
-
-###Error Slopes
 ```{r, echo=FALSE,warning = FALSE,include=FALSE}
 mt3<-na.omit(mt2)
 d_glm_fit_list <- vector(mode = "list", length = nrow(rp)*2)
@@ -445,7 +431,6 @@ for (subj in abcd_ids) {
 }
 ```
 
-###Time slopes
 ```{r, echo=FALSE,warning = FALSE,include=FALSE}
 d_glm_fit_list <- vector(mode = "list", length = nrow(rp)*2)
 index <- 0
@@ -466,9 +451,8 @@ for (subj in abcd_ids) {
 #new data frame containing the mirror slopes
 mt_data <- data.frame(PartID=abcd_ids,slope_me = m_list5, slope_mt = m_list7)
 mt_data$slope_me<-as.numeric(mt_data$slope_me)
-#mt_data=mt_data%>%dplyr::filter(slope_me>-300)
 hist(mt_data$slope_mt)
-mt_data<-mt_data%>%filter(mt_data$slope_mt<0) #filter out postitive slopes
+mt_data<-mt_data%>%filter(mt_data$slope_mt<0) #filter out postitive slopesx
 mt_data$slope_mt<-abs(mt_data$slope_mt)
 mt_data$slope_me<-abs(mt_data$slope_me)
 
@@ -476,13 +460,16 @@ d_3 <- d %>%
    select("PartID","Subgroup", "background_age","background_sex")
 
 d_mt <- left_join(mt_data, d_3, by = "PartID")
-d2<-merge(d_rp,d_mt)
+d2<-merge(d_rp,d_mt,all = TRUE)
+```
+
+```{r, echo=FALSE,warning = FALSE}
 table(d2$Subgroup)
 ```
 
-
+##### MR Slope analysis
 - A significant group effects for slope, with faster learning for Typ, even after controlling for age, sex, and IQ.
-- Removed participants with slopes abova zero (opposite learning pattern)
+- Removed participants with slopes above zero (opposite learning pattern-N=1)
 
 ```{r, echo=FALSE,warning = FALSE}
 m3<-lm(slope_mt~background_age+background_sex+kbit_ss+Subgroup, data=d2,na.action = na.exclude)
@@ -491,7 +478,6 @@ lsmeans(m3, list(pairwise ~ Subgroup), adjust = "tukey")
 m4<-lm(slope_me~background_age+background_sex+kbit_ss+Subgroup, data=d2,na.action = na.exclude)
 summary(m4)
 lsmeans(m4, list(pairwise ~ Subgroup), adjust = "tukey")
-
 ```
 
 ## MT: Plot Slope Effects
@@ -514,7 +500,7 @@ multi.group_mt <-
   dabestr::dabest(Subgroup,mean,
          idx = list(c("TYP",'DD')),
          paired = FALSE)
-two.group.unpaired.meandiff_mt <- dabestr::mean_diff(multi.group_mt)
+two.group.unpaired.meandiff_mt <- dabestr::cohens_d(multi.group_mt)
 
 plot(two.group.unpaired.meandiff_mt, palette=c("blue","red"),rawplot.ylabel = "MT Time Slope")
 ```
@@ -535,7 +521,7 @@ multi.group_me <-
   dabestr::dabest(Subgroup,mean,
          idx = list(c("TYP",'DD')),
          paired = FALSE)
-two.group.unpaired.meandiff_me <- dabestr::mean_diff(multi.group_me)
+two.group.unpaired.meandiff_me <- dabestr::cohens_d(multi.group_me)
 
 plot(two.group.unpaired.meandiff_me, palette=c("blue","red"),rawplot.ylabel = "MT Error Slope")
 ```
@@ -549,7 +535,7 @@ d_all <-merge(d_all,SL,all=TRUE)
 table(SL$group)
 ```
 
-## Slope analyses
+### Slope analyses
 ```{r,echo=FALSE,warning = FALSE}
 subj_table_vsl<-read.csv("sl_analysis/vsl_rt_subj_table.csv")
 fam_trial_vsl<-read.csv("sl_analysis/vsl_rt_trial.csv")
@@ -654,7 +640,7 @@ multi.group_asl <-
          paired = FALSE
   )
 
-multi.group_asl_2 <- dabestr::mean_diff(multi.group_asl)
+multi.group_asl_2 <- dabestr::cohens_d(multi.group_asl)
 
 plot(multi.group_asl_2, palette=c("blue","red"),rawplot.ylabel = "ASL Time Slope")
 ```
@@ -726,7 +712,7 @@ multi.group_vsl <-
          paired = FALSE
   )
 
-multi.group_vsl_2 <- dabestr::mean_diff(multi.group_vsl)
+multi.group_vsl_2 <- dabestr::cohens_d(multi.group_vsl)
 
 plot(multi.group_vsl_2, palette=c("blue","red"),rawplot.ylabel = "VSL Slope")
 
