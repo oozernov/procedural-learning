@@ -1,7 +1,7 @@
 ---
 title: "Procedural Learning 110320"
-author: "Ola Ozernov-Palchik"
-date: "11/4/2020"
+author: "Ola Ozernov-Palchik & Zhenghan Qi"
+date: "03/03/2021"
 output:
   word_document: default
   html_document:
@@ -866,19 +866,19 @@ corstars(task_data,method="pearson")#you need to run the function first
 ```
 
 ###Everyone
-```{r, echo=FALSE}
+```{r, echo=FALSE, include=FALSE}
 corstars(task_data,method="pearson")#you need to run the function first
 
 ```
 ###Dys only
 both the rotary pursuit and ASL accuracy/RT are related to reading
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, include=FALSE}
 corstars(task_data_dys,method="pearson")#you need to run the function first
 ```
 
 ###Typ only
 better VSL is related to worse reading...
-```{r, echo=FALSE}
+```{r, echo=FALSE, include=FALSE}
 corstars(task_data_typ,method="pearson")#you need to run the function first
 ```
