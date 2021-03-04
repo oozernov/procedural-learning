@@ -740,7 +740,7 @@ for (id in all_subj_slope$subj) {
   all_subj_slope[all_subj_slope$subj==id,]$tasknum = nrow(all_subj_slope[all_subj_slope$subj==id,])
 }
 all_subj_slope_complete = subset(all_subj_slope,tasknum==2)
-model_rt <- aov(rt_slope_scale~task*Subgroup+mean_rt+Error(subj/task),data=all_subj_slope_complete) # controlling for mean rt.
+model_rt <- lm(rt_slope_scale~task*Subgroup+mean_rt+Error(subj/task),data=all_subj_slope_complete) # controlling for mean rt.
 print(summary(model_rt))
 model_rt_lmer <- lmer(rt_col~task*Subgroup+(1+task|PartID)+(1|reindex),data=all_fam_trials)
 print(summary(model_rt_lmer))
