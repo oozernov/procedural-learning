@@ -259,6 +259,7 @@ multi.group3 <-
 two.group.unpaired.meandiff <- dabestr::cohens_d(multi.group3)
 plot(two.group.unpaired.meandiff, palette=c("blue","red"),rawplot.ylabel = "RP Prop On Slope")
 ```
+\newpage
 
 # Mirror Tracing
 
@@ -424,7 +425,7 @@ m_list5 = c()
 for (subj in abcd_ids) {
  # print(subj)
   d_subj <- filter(mt3, PartID==subj)
-  subj_model <- glm(error ~ trial, #errors
+  subj_model <- lm(error ~ trial, #errors
                     data = d_subj)
   b_list5[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
   m_list5[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
@@ -441,7 +442,7 @@ m_list7 = c()
 for (subj in abcd_ids) {
  print(subj)
   d_subj <- filter(mt3, PartID==subj)
-  subj_model <- glm(time ~ trial, #errors
+  subj_model <- lm(time ~ trial, #errors
                     data = d_subj)
   b_list7[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
   m_list7[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
@@ -452,7 +453,7 @@ for (subj in abcd_ids) {
 mt_data <- data.frame(PartID=abcd_ids,slope_me = m_list5, slope_mt = m_list7)
 mt_data$slope_me<-as.numeric(mt_data$slope_me)
 hist(mt_data$slope_mt)
-mt_data<-mt_data%>%filter(mt_data$slope_mt<0) #filter out postitive slopesx
+mt_data<-mt_data%>%filter(mt_data$slope_mt<0) #filter out postitive slopes (n=2)
 mt_data$slope_mt<-abs(mt_data$slope_mt)
 mt_data$slope_me<-abs(mt_data$slope_me)
 
@@ -463,13 +464,14 @@ d_mt <- left_join(mt_data, d_3, by = "PartID")
 d2<-merge(d_rp,d_mt,all = TRUE)
 ```
 
+## Final Sample
 ```{r, echo=FALSE,warning = FALSE}
 table(d2$Subgroup)
 ```
 
 ##### MR Slope analysis
 - A significant group effects for slope, with faster learning for Typ, even after controlling for age, sex, and IQ.
-- Removed participants with slopes above zero (opposite learning pattern-N=1)
+- Removed participants with slopes above zero (opposite learning pattern-N=2)
 
 ```{r, echo=FALSE,warning = FALSE}
 m3<-lm(slope_mt~background_age+background_sex+kbit_ss+Subgroup, data=d2,na.action = na.exclude)
@@ -525,6 +527,7 @@ two.group.unpaired.meandiff_me <- dabestr::cohens_d(multi.group_me)
 
 plot(two.group.unpaired.meandiff_me, palette=c("blue","red"),rawplot.ylabel = "MT Error Slope")
 ```
+\newpage
 
 # Statistical Learning
 ```{r, echo=FALSE,warning = FALSE}
