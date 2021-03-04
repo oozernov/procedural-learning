@@ -22,6 +22,12 @@ library(dplyr)
 library(tibble)
 library(ggpubr)
 library(rstatix)
+Packages <- c("dplyr", "stats", "psych", "ggplot2", "lme4",
+              "gridExtra", "dplyr","caret","tidyverse",
+              "plyr","lmerTest","ggpubr","nlme","emmeans","rstatix","ggbeeswarm"
+)
+
+lapply(Packages, library, character.only = TRUE)
 ```
 
 ```{r,echo=FALSE}
@@ -674,9 +680,9 @@ colnames(fam_trial_tsl_scale)[3]="PartID"
 colnames(fam_trial_tsl_scale)[4]="Subgroup"
 colnames(subj_table_tsl)[1]="PartID"
 colnames(subj_table_tsl)[10]="Subgroup"
-write.csv(fam_trial_vsl_scale,"tsl_rt_scale_trial.csv")
-write.csv(fam_trial_vsl,"tsl_rt_trial.csv")
-write.csv(subj_table_vsl,"tsl_rt_subj_table.csv")
+write.csv(fam_trial_tsl_scale,"tsl_rt_scale_trial.csv")
+write.csv(fam_trial_tsl,"tsl_rt_trial.csv")
+write.csv(subj_table_tsl,"tsl_rt_subj_table.csv")
 ```
 * TSL RT summary (mean +/- sd)
 ```{r,echo=FALSE,warning=FALSE}

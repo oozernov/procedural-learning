@@ -594,6 +594,9 @@ t.test(dprime~Subgroup,data=subj_table_tsl_usable)
 t.test(rt_slope~Subgroup,data=subj_table_tsl_usable)
 fam_trial_tsl_usable <-subset(fam_trial_tsl,PartID %in% usable_tsl_rt)
 fam_trial_tsl_usable_s <-subset(fam_trial_tsl_scale,PartID %in% usable_tsl_rt)
+fam_tsl_age_gender_iq = merge(fam_trial_tsl_usable,d[,c(1,3,4,6)],all.x=TRUE)
+fam_tsl_s_age_gender_iq = merge(fam_trial_tsl_usable_s,d[,c(1,3,4,6)],all.x=TRUE)
+
 model1 <- lm(rt_col~reindex*Subgroup,data=fam_trial_tsl_usable)
 print(summary(model1))
 model1_scale <-lm(rt_col~reindex*Subgroup,data=fam_trial_tsl_usable_s)
@@ -602,6 +605,14 @@ model2 <- lmer(rt_col~reindex*Subgroup+(1|PartID)+(0+reindex|PartID),data=fam_tr
 print(summary(model2))
 model2_scale <- lmer(rt_col~reindex*Subgroup+(1|PartID)+(0+reindex|PartID),data=fam_trial_tsl_usable_s)
 print(summary(model2_scale))
+model1_cov <- lm(rt_col~background_age+background_sex+kbit_ss+reindex*Subgroup,data=fam_tsl_age_gender_iq)
+print(summary(model1_cov))
+model1_cov_scale <- lm(rt_col~background_age+background_sex+kbit_ss+reindex*Subgroup,data=fam_tsl_s_age_gender_iq)
+print(summary(model1_cov_scale))
+model2_cov <- lmer(rt_col~background_age+background_sex+kbit_ss+reindex*Subgroup+(1|PartID)+(0+reindex|PartID),data=fam_tsl_age_gender_iq)
+print(summary(model2_cov))
+model2_cov_scale <- lmer(rt_col~background_age+background_sex+kbit_ss+reindex*Subgroup+(1|PartID)+(0+reindex|PartID),data=fam_tsl_s_age_gender_iq)
+print(summary(model2_cov_scale))
 ```
 ##Plot of TSL RT
 ### RT as the function of Target repetition
@@ -662,10 +673,16 @@ data %>%
 ```
 * The DD group had a faster RT acceleration than the TYP group tested by linear regression models
 ```{r,echo=FALSE,warning=FALSE}
+fam_vsl_age_gender_iq = merge(fam_trial_vsl,d[,c(1,3,4,6)],all.x=TRUE)
+fam_vsl_s_age_gender_iq = merge(fam_trial_vsl_scale,d[,c(1,3,4,6)],all.x=TRUE)
 model1 <- lm(rt_col~reindex*Subgroup,data=fam_trial_vsl)
 print(summary(model1))
 model1_scale <- lm(rt_col~reindex*Subgroup,data=fam_trial_vsl_scale)
 print(summary(model1_scale))
+model1_cov <- lm(rt_col~background_age+background_sex+kbit_ss+reindex*Subgroup,data=fam_vsl_age_gender_iq)
+print(summary(model1_cov))
+model1_cov_scale <- lm(rt_col~background_age+background_sex+kbit_ss+reindex*Subgroup,data=fam_vsl_s_age_gender_iq)
+print(summary(model1_cov_scale))
 ```
 * marginal results with the raw RT data and significant results (same as linear regression) with the scaled data tested by lmer.
 ```{r,echo=FALSE,warning=FALSE}
@@ -674,6 +691,10 @@ model2 <- lmer(rt_col~Subgroup*reindex + (1|PartID)+(0+reindex|PartID),data=fam_
 print(summary(model2))
 model2_scale <- lmer(rt_col~Subgroup*reindex + (1|PartID)+(0+reindex|PartID),data=fam_trial_vsl_scale)
 print(summary(model2_scale))
+model2_cov <- lmer(rt_col~background_age+background_sex+kbit_ss+reindex*Subgroup+(1|PartID)+(0+reindex|PartID),data=fam_vsl_age_gender_iq)
+print(summary(model2_cov))
+model2_cov_scale <- lmer(rt_col~background_age+background_sex+kbit_ss+reindex*Subgroup+(1|PartID)+(0+reindex|PartID),data=fam_vsl_s_age_gender_iq)
+print(summary(model2_cov_scale))
 ```
 ##Plot of VSL RT
 ### RT as the function of Target repetition
@@ -740,18 +761,24 @@ for (id in all_subj_slope$subj) {
   all_subj_slope[all_subj_slope$subj==id,]$tasknum = nrow(all_subj_slope[all_subj_slope$subj==id,])
 }
 all_subj_slope_complete = subset(all_subj_slope,tasknum==2)
-model_rt <- lm(rt_slope_scale~task*Subgroup+mean_rt+Error(subj/task),data=all_subj_slope_complete) # controlling for mean rt.
+all_subj_slope_age_gender_iq = merge(all_subj_slope_complete,d[,c(1,3,4,6)],all.x=TRUE)
+all_fam_trials_age_gender_iq = merge(all_fam_trials,d[,c(1,3,4,6)],all.x=TRUE)
+model_rt <- lm(rt_slope_scale~task*Subgroup+mean_rt,data=all_subj_slope_complete) # controlling for mean rt.
 print(summary(model_rt))
 model_rt_lmer <- lmer(rt_col~task*Subgroup+(1+task|PartID)+(1|reindex),data=all_fam_trials)
+print(summary(model_rt_lmer))
+model_rt_cov <- lm(rt_slope_scale~background_age+background_sex+kbit_ss+task*Subgroup+mean_rt,data=all_subj_slope_age_gender_iq)
+print(summary(model_rt_cov))
+model_rt_lmer_cov <- lmer(rt_col~background_age+background_sex+kbit_ss+task*Subgroup+(1+task|PartID)+(1|reindex),data=all_fam_trials_age_gender_iq)
 print(summary(model_rt_lmer))
 ```
 ### Mean RT sanity check
 No significant differences in RT for either task.
 ```{r,echo=FALSE,warning = FALSE}
-m6<-lm(aud_fam_rt~background_age+background_sex+Subgroup, data=d_all,na.action = na.exclude)
+m6<-lm(aud_fam_rt~background_age+background_sex+kbit_ss+Subgroup, data=d_all,na.action = na.exclude)
 anova(m6)
 
-m7<-lm(vis_fam_rt~background_age+background_sex+Subgroup, data=d_all,na.action = na.exclude)
+m7<-lm(vis_fam_rt~background_age+background_sex+kbit_ss+Subgroup, data=d_all,na.action = na.exclude)
 anova(m7)
 ```
 # SL accuracy analysis
@@ -760,9 +787,9 @@ anova(m7)
 all_accuracy=read.csv("sl_analysis/all_sl_accuracy.csv")
 all_acc_table=read.csv("sl_analysis/sl_acc_subj_table.csv")#THIS FILE IS NOT IN DIRECTORY
 vsl_acc_table=subset(all_acc_table,task=="Visual")
-tsl_acc_table=subset(all_acc_table,task="Auditory")
-vsl_accuracy=subset(all_accuracy,task="Visual")
-tsl_accuracy=subset(all_accuracy,task="Auditory")
+tsl_acc_table=subset(all_acc_table,task=="Auditory")
+vsl_accuracy=subset(all_accuracy,task=="Visual")
+tsl_accuracy=subset(all_accuracy,task=="Auditory")
 data<-as_tibble(all_acc_table)
 data %>%
   group_by(Subgroup,task) %>%
@@ -774,33 +801,15 @@ data %>%
 ##Look into group performance between Dyl and Typ
 ### simple t test: both groups performed above chance for both tasks
 ```{r,echo=FALSE,warning=FALSE}
-DD <- list("ABCD_1711", "ABCD_1714", "ABCD_1727", "ABCD_1735", "ABCD_1751", "ABCD_1756", "ABCD_1764:", "ABCD_1767", "ABCD_1768", "ABCD_1776","ABCD_1777","ABCD_1778", "ABCD_1781", "ABCD_1784", "ABCD_1787", "ABCD_1792", "ABCD_1794")
+DD_acc_vsl = subset(vsl_acc_table,Subgroup=="DD")
+TYP_acc_vsl = subset(vsl_acc_table,Subgroup=="TYP")
+DD_acc_tsl = subset(tsl_acc_table,Subgroup=="DD")
+TYP_acc_tsl = subset(tsl_acc_table,Subgroup=="TYP")
+t.test(DD_acc_vsl$subj_corr,mu=0.5,alternative = "greater")
+t.test(DD_acc_tsl$subj_corr,mu=0.5,alternative = "greater")
 
-TYP <- list("ABCD_1702", "ABCD_1703", "ABCD_1705", "ABCD_1708", "ABCD_1709", "ABCD_1710", "ABCD_1716", "ABCD_1720", "ABCD_1721", "ABCD_1724", "ABCD_1725", "ABCD_1728", "ABCD_1729", "ABCD_1730", "ABCD_1732", "ABCD_1734", "ABCD_1736", "ABCD_1739", "ABCD_1742", "ABCD_1747", "ABCD_1749", "ABCD_1754", "ABCD_1783", "ABCD_1788")
-
-DD_acc_vsl <- NULL
-DD_acc_tsl <- NULL
-TYP_acc_vsl <- NULL
-TYP_acc_tsl <- NULL
-DD <- list("ABCD_1711", "ABCD_1714", "ABCD_1727", "ABCD_1735", "ABCD_1751", "ABCD_1756", "ABCD_1764", "ABCD_1767", "ABCD_1768", "ABCD_1776","ABCD_1777","ABCD_1778", "ABCD_1781", "ABCD_1784", "ABCD_1787", "ABCD_1792", "ABCD_1794")
-
-TYP <- list("ABCD_1702", "ABCD_1703", "ABCD_1705", "ABCD_1708", "ABCD_1709", "ABCD_1710", "ABCD_1716", "ABCD_1720", "ABCD_1721", "ABCD_1724", "ABCD_1725", "ABCD_1728", "ABCD_1729", "ABCD_1730", "ABCD_1732", "ABCD_1734", "ABCD_1736", "ABCD_1739", "ABCD_1742", "ABCD_1747", "ABCD_1749", "ABCD_1754", "ABCD_1783", "ABCD_1788" )
-
-for(id in DD){
-  DD_acc_vsl<- append(DD_acc_vsl,vsl_acc_table$subj_corr[vsl_acc_table$PartID==id])
-  DD_acc_tsl<- append(DD_acc_tsl,tsl_acc_table$subj_corr[tsl_acc_table$PartID==id])
-}
-
-for(id in TYP){
-  TYP_acc_vsl<- append(TYP_acc_vsl,vsl_acc_table$subj_corr[vsl_acc_table$PartID==id])
-  TYP_acc_tsl<- append(TYP_acc_tsl,tsl_acc_table$subj_corr[tsl_acc_table$PartID==id])
-}
-
-t.test(DD_acc_vsl,mu=0.5,alternative = "greater")
-t.test(DD_acc_tsl,mu=0.5,alternative = "greater")
-
-t.test(TYP_acc_vsl,mu=0.5,alternative = "greater")
-t.test(TYP_acc_tsl,mu=0.5,alternative = "greater")
+t.test(TYP_acc_vsl$subj_corr,mu=0.5,alternative = "greater")
+t.test(TYP_acc_tsl$subj_corr,mu=0.5,alternative = "greater")
 ```
 ### anova: marginal main effect of task and marginal interaction between task and group
 ```{r,echo=FALSE,warning=FALSE}
@@ -809,15 +818,7 @@ all_acc_table_complete = subset(all_acc_table_complete,PartID!="ABCD_1727")
 model_acc <- aov(subj_corr~task*Subgroup+Error(PartID/task),data=all_acc_table_complete)
 print(summary(model_acc))
 ```
-### A t-test to compare between Dylexia and Typical group
-In tsl
-```{r,echo=FALSE}
-t.test(DD_acc_tsl,TYP_acc_tsl)
-```
-In vsl
-```{r,echo=FALSE}
-t.test(DD_acc_vsl,TYP_acc_vsl)
-```
+
 ### generalized linear effect modeling: main effect of task (visual > auditory); main effect of group (TYP > DD); marginal interaction between task and group
 ```{r,echo=FALSE}
 model_acc_lmer <- glmer(corr~task*Subgroup+(1+task|PartID)+(1|trial),data=all_accuracy,family="binomial")
@@ -833,6 +834,49 @@ print(summary(model_vslacc_lmer))
 
 model_tslacc_lmer <- glmer(corr~Subgroup+(1|PartID)+(1|trial),data=tsl_accuracy,family="binomial")
 print(summary(model_tslacc_lmer))
+
+vsl_accuracy_age_gender_iq = merge(vsl_accuracy,d[,c(1,3,4,6)],by="PartID",all.x=TRUE)
+tsl_accuracy_age_gender_iq = merge(tsl_accuracy,d[,c(1,3,4,6)],by="PartID",all.x=TRUE)
+
+model_vslacc_lmer_cov <- glmer(corr~background_age+background_sex+kbit_ss+Subgroup+(1|PartID)+(1|trial),data=vsl_accuracy_age_gender_iq,family="binomial")
+print(summary(model_vslacc_lmer_cov))
+
+model_tslacc_lmer_cov <- glmer(corr~background_age+background_sex+kbit_ss+Subgroup+(1|PartID)+(1|trial),data=tsl_accuracy_age_gender_iq,family="binomial")
+print(summary(model_tslacc_lmer_cov))
+```
+## plot the accuracy within VSL
+```{r,echo=FALSE}
+vsl_acc_summary = vsl_acc_table %>%
+  dplyr::group_by(PartID, Subgroup) %>%
+  dplyr::summarise(mean = mean(subj_corr, na.rm = T))
+
+multi.group_vsl_acc <-
+ vsl_acc_summary %>%
+  dabestr::dabest(Subgroup,mean,
+         idx = list(c("TYP","DD")),
+         paired = FALSE
+  )
+
+multi.group_vsl_acc_2 <- dabestr::cohens_d(multi.group_vsl_acc)
+
+plot(multi.group_vsl_acc_2, palette=c("blue","red"),rawplot.ylabel = "VSL Accuracy")
+```
+## plot the accuracy within TSL
+```{r,echo=FALSE}
+tsl_acc_summary = tsl_acc_table %>%
+  dplyr::group_by(PartID, Subgroup) %>%
+  dplyr::summarise(mean = mean(subj_corr, na.rm = T))
+
+multi.group_tsl_acc <-
+ tsl_acc_summary %>%
+  dabestr::dabest(Subgroup,mean,
+         idx = list(c("TYP","DD")),
+         paired = FALSE
+  )
+
+multi.group_tsl_acc_2 <- dabestr::cohens_d(multi.group_tsl_acc)
+
+plot(multi.group_tsl_acc_2, palette=c("blue","red"),rawplot.ylabel = "ASL Accuracy")
 ```
 ## plot the accuracy by group and task
 ```{r,echo=FALSE}
@@ -869,19 +913,19 @@ corstars(task_data,method="pearson")#you need to run the function first
 ```
 
 ###Everyone
-```{r, echo=FALSE, include=FALSE}
+```{r, echo=FALSE, include=TRUE}
 corstars(task_data,method="pearson")#you need to run the function first
 
 ```
 ###Dys only
 both the rotary pursuit and ASL accuracy/RT are related to reading
 
-```{r, echo=FALSE, include=FALSE}
+```{r, echo=FALSE, include=TRUE}
 corstars(task_data_dys,method="pearson")#you need to run the function first
 ```
 
 ###Typ only
 better VSL is related to worse reading...
-```{r, echo=FALSE, include=FALSE}
+```{r, echo=FALSE, include=TRUE}
 corstars(task_data_typ,method="pearson")#you need to run the function first
 ```
