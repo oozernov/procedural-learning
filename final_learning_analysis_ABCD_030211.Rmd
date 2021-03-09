@@ -591,16 +591,17 @@ data %>%
 
 # TSL Analysis
 
-##RT by Trial Analysis
+### RT by Trial Analysis
 - There is no significant group difference in baseline speed for TSL.
 ```{r,echo=FALSE,warning = FALSE}
 t.test(subj_table_tsl_usable$mean_rt~subj_table_tsl_usable$Subgroup)
 ```
 - There is no significant group difference in detection accuracy for TSL
+
 ```{r,echo=FALSE,warning = FALSE}
 t.test(dprime~Subgroup,data=subj_table_tsl_usable)
 ```
-- No effect of group or interaction tested either by lm or lmer
+- No RTeffect of group or interaction tested either by lm or lmer
 ```{r,echo=FALSE,warning=FALSE}
 fam_trial_tsl_usable <-subset(fam_trial_tsl,PartID %in% usable_tsl_rt)
 fam_trial_tsl_usable_s <-subset(fam_trial_tsl_scale,PartID %in% usable_tsl_rt)
@@ -617,8 +618,9 @@ subj_table_tsl_gender_iq = merge(subj_table_tsl_usable,d[,c(1,3,4,6)],all.x=TRUE
 tsl_rt_ancova=aov(rt_slope~Subgroup+background_age+background_sex+kbit_ss,data=subj_table_tsl_gender_iq)
 summary(tsl_rt_ancova)
 ```
-##Plot of TSL RT
-### RT as the function of Target repetition
+
+#### Plot of TSL RT
+- RT as the function of Target repetition
 ```{r,echo=FALSE}
 tsl_rt_plot<-dplyr::summarise(group_by(fam_trial_tsl,Subgroup,reindex), n = n(),
                          mean=mean(rt_col,na.rm = T), sd=sd(rt_col,na.rm = T),se = sd/sqrt(n))
@@ -640,8 +642,8 @@ ggplot(data = tsl_rt_plot, aes(x=reindex, y=mean, color = Subgroup))+
   theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
 ```
 
-### plot ASL RT slope across the two groups
-* mean RT slope
+### Plot ASL RT Slope
+
 ```{r,echo=FALSE}
 asl_slope<-subj_table_tsl_usable%>%dplyr::select("PartID","Subgroup","rt_slope")
 
@@ -663,7 +665,7 @@ multi.group_asl_2 <- dabestr::cohens_d(multi.group_asl)
 plot(multi.group_asl_2, palette=c("blue","red"),rawplot.ylabel = "ASL Time Slope")
 ```
 
-##VSL Slope Analysis
+####VSL Slope Analysis
 ```{r,echo=FALSE,warning=FALSE}
 data<-as_tibble(subj_table_vsl)
 data %>%
@@ -699,8 +701,9 @@ vsl_rt_ancova=aov(rt_slope~Subgroup+background_age+background_sex+kbit_ss,data=s
 summary(vsl_rt_ancova)
 ```
 
-##Plot of VSL RT
-### RT as the function of Target repetition
+####Plot of VSL RT
+
+- RT as the function of Target repetition
 ```{r,echo=FALSE}
 vsl_rt_plot<-dplyr::summarise(group_by(fam_trial_vsl,Subgroup,reindex), n = n(),
                          mean=mean(rt_col,na.rm = T), sd=sd(rt_col,na.rm = T),se = sd/sqrt(n))
@@ -721,8 +724,8 @@ ggplot(data = vsl_rt_plot, aes(x=reindex, y=mean, color = Subgroup))+
   theme(panel.background = element_rect(fill = "white", colour = "grey50")) +
   theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
 ```
-### plot mean RT slope across the two groups
-* mean RT slope
+#### plot mean RT slope across the two groups
+
 ```{r, echo=FALSE,warning = FALSE}
 vsl_slope<-subj_table_vsl%>%dplyr::select("PartID","Subgroup","rt_slope")
 
@@ -744,7 +747,8 @@ multi.group_vsl_2 <- dabestr::cohens_d(multi.group_vsl)
 plot(multi.group_vsl_2, palette=c("blue","red"),rawplot.ylabel = "VSL Slope")
 ```
 
-## Combine slope data of both tasks
+#### Combine slope data of both tasks
+
 ```{r,echo=FALSE,warning=FALSE,include=FALSE}
 colnames(subj_table_tsl_usable)[1]="subj"
 colnames(subj_table_vsl)[1]="subj"
@@ -756,7 +760,8 @@ fam_trial_tsl_usable_s$task="Auditory"
 all_fam_trials = rbind(fam_trial_vsl_scale,fam_trial_tsl_usable_s)
 ```
 
-### Using scaled RT, check interactions between task and group. 
+#### Using scaled RT, check interactions between task and group. 
+
 - both lm and lmer models: task x trial interaction: visual task show faster acceleration across the two groups; task x trial x group interaction (marginal): group difference in slope is greater in VSL than ASL
 ```{r,echo=FALSE,warning=FALSE}
 all_subj_slope$tasknum=""
@@ -776,8 +781,10 @@ print(summary(model_rt_lmer_cov))
 all_sl_slope_ancova = aov(rt_slope_scale~Subgroup*task+background_age+background_sex+kbit_ss,data=all_subj_slope_age_gender_iq)
 print(summary(all_sl_slope_ancova))
 ```
-# SL accuracy analysis
-## Accuracy Data Summary (mean +/- sd)
+
+## SL Accuracy Analysis
+
+#### Accuracy Data Summary (mean +/- sd)
 ```{r,echo=FALSE,warning=FALSE}
 all_accuracy=read.csv("sl_analysis/all_sl_accuracy.csv")
 all_acc_table=read.csv("sl_analysis/sl_acc_subj_table.csv")
@@ -793,21 +800,21 @@ data %>%
           accuracy = qwraps2::mean_sd(subj_corr)
           )
 ```
-## Look into group performance between Dyl and Typ
-### both groups performed above chance for both tasks
+#### ASL and VSL Accuracy 
+- both groups performed above chance for both tasks
 ```{r,echo=FALSE,warning=FALSE}
-DD_acc_vsl = subset(vsl_acc_table,Subgroup=="DD")
-TYP_acc_vsl = subset(vsl_acc_table,Subgroup=="TYP")
-DD_acc_tsl = subset(tsl_acc_table,Subgroup=="DD")
-TYP_acc_tsl = subset(tsl_acc_table,Subgroup=="TYP")
-t.test(DD_acc_vsl$subj_corr,mu=0.5,alternative = "greater")
-t.test(DD_acc_tsl$subj_corr,mu=0.5,alternative = "greater")
+#DD_acc_vsl = subset(vsl_acc_table,Subgroup=="DD")
+#TYP_acc_vsl = subset(vsl_acc_table,Subgroup=="TYP")
+#DD_acc_tsl = subset(tsl_acc_table,Subgroup=="DD")
+#TYP_acc_tsl = subset(tsl_acc_table,Subgroup=="TYP")
+#t.test(DD_acc_vsl$subj_corr,mu=0.5,alternative = "greater")
+#t.test(DD_acc_tsl$subj_corr,mu=0.5,alternative = "greater")
 
-t.test(TYP_acc_vsl$subj_corr,mu=0.5,alternative = "greater")
-t.test(TYP_acc_tsl$subj_corr,mu=0.5,alternative = "greater")
+#t.test(TYP_acc_vsl$subj_corr,mu=0.5,alternative = "greater")
+#t.test(TYP_acc_tsl$subj_corr,mu=0.5,alternative = "greater")
 ```
 
-### generalized linear effect modeling within each task (both models failed to converge with IQ included, removing IQ from the covariates fix the issues)
+
 ```{r,echo=FALSE}
 vsl_accuracy = subset(all_accuracy,task=="Visual")
 tsl_accuracy = subset(all_accuracy,task=="Auditory")
@@ -815,30 +822,31 @@ tsl_accuracy = subset(all_accuracy,task=="Auditory")
 vsl_accuracy_age_gender_iq = merge(vsl_accuracy,d[,c(1,3,4,6)],by="PartID",all.x=TRUE)
 tsl_accuracy_age_gender_iq = merge(tsl_accuracy,d[,c(1,3,4,6)],by="PartID",all.x=TRUE)
 ```
-- within VSL, no group effect
+- generalized linear effect modeling within each task (both models failed to converge with IQ included, removing IQ from the covariates fix the issues)
+-  VSL, no group effect
 ```{r,echo=FALSE}
 model_vslacc_lmer_cov <- glmer(corr~background_age+background_sex+Subgroup+(1|PartID)+(1|trial),data=vsl_accuracy_age_gender_iq,family="binomial", control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
 print(summary(model_vslacc_lmer_cov))
 ```
-- within VSL, ANCOVA to test group effect, no group effect
-```{r,echo=FALSE}
+```{r,echo=FALSE, include=FALSE}
 all_acc_table_age_gender_iq = merge(all_acc_table,d[,c(1,3,4,6)],by="PartID",all.x=TRUE)
 vsl_acc_table = subset(all_acc_table_age_gender_iq,task == "Visual")
 asl_acc_table = subset(all_acc_table_age_gender_iq,task == "Auditory")
-vslacc_ancova <- aov(subj_corr~background_age+background_sex+kbit_ss+Subgroup,data=vsl_acc_table)
-print(summary(vslacc_ancova))
+#vslacc_ancova <- aov(subj_corr~background_age+background_sex+kbit_ss+Subgroup,data=vsl_acc_table)
+#print(summary(vslacc_ancova))
 ```
-- within ASL, significant group effect: DD<TYP
+- Significant group effects for ASL (Typ>Dys)
 ```{r,echo=FALSE}
 model_tslacc_lmer_cov <- glmer(corr~background_age+background_sex+Subgroup+(1|PartID)+(1|trial),data=tsl_accuracy_age_gender_iq,family="binomial",control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
 print(summary(model_tslacc_lmer_cov))
 ```
-- within ASL, ANCOVA to test group effect, significant group effect
-```{r,echo=FALSE}
-aslacc_ancova <- aov(subj_corr~background_age+background_sex+kbit_ss+Subgroup,data=asl_acc_table)
-print(summary(aslacc_ancova))
+```{r,echo=FALSE, include=FALSE}
+#aslacc_ancova <- aov(subj_corr~background_age+background_sex+kbit_ss+Subgroup,data=asl_acc_table)
+#print(summary(aslacc_ancova))
 ```
-### plot the accuracy within VSL
+
+#### Plot VSL Accuracy
+
 ```{r,echo=FALSE}
 vsl_acc_summary = vsl_acc_table %>%
   dplyr::group_by(PartID, Subgroup) %>%
@@ -855,7 +863,8 @@ multi.group_vsl_acc_2 <- dabestr::cohens_d(multi.group_vsl_acc)
 
 plot(multi.group_vsl_acc_2, palette=c("blue","red"),rawplot.ylabel = "VSL Accuracy")
 ```
-### plot the accuracy within TSL
+#### Plot ASL Accuracy
+
 ```{r,echo=FALSE}
 tsl_acc_summary = tsl_acc_table %>%
   dplyr::group_by(PartID, Subgroup) %>%
@@ -873,16 +882,16 @@ multi.group_tsl_acc_2 <- dabestr::cohens_d(multi.group_tsl_acc)
 plot(multi.group_tsl_acc_2, palette=c("blue","red"),rawplot.ylabel = "ASL Accuracy")
 ```
 
-### generalized linear effect modeling: testing the interaction between group and task
-- main effect of task (visual > auditory); main effect of group (TYP > DD); 
+#### Task by Group Interaction
+
+- LME: main effect of task (visual > auditory); main effect of group (TYP > DD); 
 ```{r,echo=FALSE}
 all_accuracy_age_gender_iq = merge(all_accuracy,d[,c(1,3,4,6)],by="PartID",all.x=TRUE)
 model_acc_lmer <- glmer(corr~task*Subgroup+background_age+background_sex+(1+task|PartID)+(1|trial),data=all_accuracy_age_gender_iq,family="binomial",control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
 print(summary(model_acc_lmer))
 ```
 
-### ancova: testing the interaction between group and task
-- marginal effect of task (Visual > Auditory)
+- ANCOVA: marginal effect of task (Visual > Auditory)
 ```{r,echo=FALSE,warning=FALSE}
 all_acc_table_complete = subset(all_acc_table,PartID!="ABCD_1708")
 all_acc_table_complete = subset(all_acc_table_complete,PartID!="ABCD_1727")
@@ -891,7 +900,7 @@ model_acc <- aov(subj_corr~task*Subgroup+background_age+background_sex+kbit_ss,d
 print(summary(model_acc))
 ```
 
-## plot the accuracy by group and task
+#### Plot  accuracy by group and task
 ```{r,echo=FALSE}
 stat.test <- all_acc_table %>%
   group_by(task) %>%
@@ -915,29 +924,73 @@ ggplot() +
 
 
 # Cross-task correlations
+
 ```{r,include=FALSE,warning = FALSE}
 d_all_dys = subset(d_all,Subgroup == "DD")
 d_all_typ = subset(d_all,Subgroup == "TYP")
-task_data<-d_all%>%select(kbit_ss_2,gort_ori_ss_2,ctopp_nonword_raw_2,ctopp_elision_raw_2,ctopp_blending_raw_2,wais_dsb_ss_2,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,,vis_acc,aud_acc,quicksin_snr_loss_2)
-task_data_dys<-d_all_dys%>%select(kbit_ss_2,gort_ori_ss_2, wrmt_id_ss_2,wrmt_wa_ss_2,towre_sw_ss_2,towre_pde_ss_2, slopeProp_On, slope_mt,slope_me,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)
-task_data_typ<-d_all_typ%>%select(kbit_ss_2,gort_ori_ss_2, wrmt_id_ss_2,wrmt_wa_ss_2,towre_sw_ss_2,towre_pde_ss_2, slopeProp_On,slope_mt,slope_me,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)
+task_data<-d_all%>%select(gort_ori_ss_2,wrmt_id_ss_2,wrmt_wa_ss_2,ctopp_nonword_raw_2,ctopp_blending_raw_2,wais_dsb_ss_2,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
+task_data_dys<-d_all_dys%>%select(gort_ori_ss_2,wrmt_id_ss_2,wrmt_wa_ss_2,ctopp_nonword_raw_2,ctopp_blending_raw_2,wais_dsb_ss_2,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
+task_data_typ<-d_all_typ%>%select(gort_ori_ss_2,wrmt_id_ss_2,wrmt_wa_ss_2,ctopp_nonword_raw_2,ctopp_blending_raw_2,wais_dsb_ss_2,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
 corstars(task_data,method="pearson")#you need to run the function first
 ```
 
 ###Everyone
+
 ```{r, echo=FALSE, include=TRUE}
-corstars(task_data,method="pearson")#you need to run the function first
+#corstars(task_data,method="pearson")#you need to run the function first
+
+library(corrr)
+x <- correlate(task_data)
+x %>% 
+  focus(slope_me,slope_mt, slopeProp_On, vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)%>% fashion()
 
 ```
-###Dys only
-both the rotary pursuit and ASL accuracy/RT are related to reading
+
+### Dys only
+
+- both the rotary pursuit and ASL accuracy/RT are related to reading
+- RP performance is associated with better reading
 
 ```{r, echo=FALSE, include=TRUE}
-corstars(task_data_dys,method="pearson")#you need to run the function first
+#corstars(task_data_dys,method="pearson")#you need to run the function first
+x_d <- correlate(task_data_dys)
+x_d %>% 
+  focus(slope_me,slope_mt, slopeProp_On, vis_slope_scale,aud_slope_scale)%>% fashion()
 ```
 
-###Typ only
-better VSL is related to worse reading...
+```{r, echo=FALSE}
+
+ggplot(task_data_dys, aes(x = wrmt_wa_ss_2, y = slopeProp_On)) +
+  stat_smooth (
+    method = "glm",
+    formula = y ~ x,
+    colour = "black",
+    size = 1) +
+  geom_point(aes(size = 3)) +
+  labs(x = "Word Attack ", y = "Rotary Pursuit") +
+  theme(axis.title = element_text(family = "Trebuchet MS", size = 14))+ theme(panel.background = element_blank(),legend.position = "none")
+```
+```{r, echo=FALSE}
+
+ggplot(task_data_dys, aes(x = wrmt_wa_ss_2, y = aud_fam_rt)) +
+  stat_smooth (
+    method = "glm",
+    formula = y ~ x,
+    colour = "black",
+    size = 1) +
+  geom_point(aes(size = 3)) +
+  labs(x = "Word Attack ", y = "ASL RT") +
+  theme(axis.title = element_text(family = "Trebuchet MS", size = 14))+ theme(panel.background = element_blank(),legend.position = "none")
+```
+
+### Typ only
+
+- better VSL is related to worse reading
+
 ```{r, echo=FALSE, include=TRUE}
-corstars(task_data_typ,method="pearson")#you need to run the function first
+#corstars(task_data_typ,method="pearson")#you need to run the function first
+x_t <- correlate(task_data_typ)
+x_t %>% 
+  focus(slope_me,slope_mt, slopeProp_On, vis_slope_scale,aud_slope_scale)%>% fashion()
+
 ```
