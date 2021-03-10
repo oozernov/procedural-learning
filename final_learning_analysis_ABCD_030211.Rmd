@@ -265,6 +265,8 @@ plot(two.group.unpaired.meandiff, palette=c("blue","red"),rawplot.ylabel = "RP P
 
 ```{r, include=FALSE,warning = FALSE}
 ## Extract and organize
+#PL<-d[c(1,188,3:4,54:70,71:80)]
+
 mt <- NULL
 mt <- data.frame('PartID'= character(),'Subgroup' = character(),'Type' = character(),'trial' = double(),
                      'time' = double(),'error' = double(),stringsAsFactors=FALSE)
@@ -416,7 +418,7 @@ ggplot(data = mtEPlot, aes(x=trial, y=meanE, color = Subgroup))+
 
 ```{r, echo=FALSE,warning = FALSE,include=FALSE}
 mt3<-na.omit(mt2)
-d_glm_fit_list <- vector(mode = "list", length = nrow(rp)*2)
+d_glm_fit_list <- vector(mode = "list", length = nrow(mt)*2)
 index <- 0
 abcd_ids=unique(mt3$PartID)
 b_list5=c()
@@ -433,7 +435,7 @@ for (subj in abcd_ids) {
 ```
 
 ```{r, echo=FALSE,warning = FALSE,include=FALSE}
-d_glm_fit_list <- vector(mode = "list", length = nrow(rp)*2)
+d_glm_fit_list <- vector(mode = "list", length = nrow(mt)*2)
 index <- 0
 abcd_ids=unique(mt3$PartID)
 b_list7=c()
@@ -454,6 +456,8 @@ mt_data <- data.frame(PartID=abcd_ids,slope_me = m_list5, slope_mt = m_list7)
 mt_data$slope_me<-as.numeric(mt_data$slope_me)
 hist(mt_data$slope_mt)
 mt_data<-mt_data%>%filter(mt_data$slope_mt<0) #filter out postitive slopes (n=2)
+mt_data<-mt_data%>%filter(mt_data$slope_mt>-300) #filter out postitive slopes (n=2)
+
 mt_data$slope_mt<-abs(mt_data$slope_mt)
 mt_data$slope_me<-abs(mt_data$slope_me)
 
