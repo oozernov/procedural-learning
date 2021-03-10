@@ -601,7 +601,7 @@ t.test(subj_table_tsl_usable$mean_rt~subj_table_tsl_usable$Subgroup)
 ```{r,echo=FALSE,warning = FALSE}
 t.test(dprime~Subgroup,data=subj_table_tsl_usable)
 ```
-- No RTeffect of group or interaction tested either by lm or lmer
+- No RT effect of group or interaction tested either by lm or lmer
 ```{r,echo=FALSE,warning=FALSE}
 fam_trial_tsl_usable <-subset(fam_trial_tsl,PartID %in% usable_tsl_rt)
 fam_trial_tsl_usable_s <-subset(fam_trial_tsl_scale,PartID %in% usable_tsl_rt)
@@ -972,14 +972,14 @@ ggplot(task_data_dys, aes(x = wrmt_wa_ss_2, y = slopeProp_On)) +
 ```
 ```{r, echo=FALSE}
 
-ggplot(task_data_dys, aes(x = wrmt_wa_ss_2, y = aud_fam_rt)) +
+ggplot(task_data_dys, aes(x = wrmt_wa_ss_2, y = aud_slope_scale)) +
   stat_smooth (
     method = "glm",
     formula = y ~ x,
     colour = "black",
     size = 1) +
   geom_point(aes(size = 3)) +
-  labs(x = "Word Attack ", y = "ASL RT") +
+  labs(x = "Word Attack ", y = "ASL Slope") +
   theme(axis.title = element_text(family = "Trebuchet MS", size = 14))+ theme(panel.background = element_blank(),legend.position = "none")
 ```
 
