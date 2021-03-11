@@ -19,7 +19,8 @@ knitr::opts_chunk$set(echo = TRUE)
 #import packages
 Packages <- c("dplyr", "stats", "psych", "ggplot2", "lme4",
               "gridExtra", "dplyr","caret","tidyverse",
-              "plyr","lmerTest","ggpubr","nlme","emmeans","rstatix","ggbeeswarm"
+              "plyr","lmerTest","ggpubr","nlme","emmeans","rstatix","ggbeeswarm",
+              "arsenal"
 )
 
 lapply(Packages, library, character.only = TRUE)
@@ -33,8 +34,6 @@ source("corstars_function.R")
 #import pocedural.csv file
 d <- read.csv('procedural_data072320.csv',stringsAsFactors = FALSE,skipNul = TRUE,
               blank.lines.skip = TRUE)
-
-
 
 groups<-read.csv("abcd_group.csv")
 names(groups)[names(groups)=="ID"] <- "PartID"
@@ -80,14 +79,15 @@ names(d)[names(d)=="wais_dsb_ss_2"] <- "DigitsBackward"
 names(d)[names(d)=="wais_dsf_ss_2"] <- "DigitsForward"
 names(d)[names(d)=="kbit_ss_2"] <- "IQ"
 
-adult_table<-d%>%ungroup%>%dplyr::select(PartID,Subgroup,Age,IQ,WID,WA,SWE,PDE,
+adult_table<-d%>%ungroup%>%dplyr::select(Subgroup,Age,IQ,WID,WA,SWE,PDE,
                                        Vocabulary,ORI,Elision,ORI,Nonword,RAN_2Set,DigitsForward,DigitsBackward)
 abcd_b<-na.omit(adult_table)
 table(d$Subgroup,d$Sex)
-at<-summary(tableby(Subgroup ~ ., data = adult_table,
+summary(tableby(Subgroup ~ ., data = adult_table,
                      control=tableby.control(numeric.stats="meansd", total=FALSE)),title = " Descriptives",text=TRUE,digits=2, digits.p=3)
-write2word(at, "descriptives.doc", title="Descriptives")
-abcd_b %>% cohens_d(Nonword~ DD, var.equal = TRUE)
+#arsenal::write2word(at, "descriptives.doc", title="Descriptives")
+
+#abcd_b %>% cohens_d(Nonword~ DD, var.equal = TRUE)
 
 ```
 
@@ -156,8 +156,8 @@ rp2_age_gender_iq = merge(rp2,d[,c(1,3,4,6)],all.x=TRUE)
 - model with trial and participant as random effects (controlling for age and sex)
 - borderline significant effect trial x subgroup (faster learning in Dys)
 ```{r, echo=FALSE,warning = FALSE}
-lmerrp1 <- lmer(prop_on~Subgroup*trial +background_age+background_sex + (1|PartID),data=rp2_age_gender_iq)
-lmerrp2 <- lmer(prop_on~Subgroup*trial +background_age+background_sex + (1+trial|PartID),data=rp2_age_gender_iq)
+lmerrp1 <- lmer(prop_on~Subgroup*trial +Age+Sex + (1|PartID),data=rp2_age_gender_iq)
+lmerrp2 <- lmer(prop_on~Subgroup*trial +Age+Sex + (1+trial|PartID),data=rp2_age_gender_iq)
 anova(lmerrp1,lmerrp2)
 summary(lmerrp2) #borderline significant effect for Subgroup x trial
 
@@ -257,7 +257,7 @@ d_rp<-merge(d,rp_data)
 
 ```{r, echo=FALSE,include=FALSE, warning = FALSE}
 hist(d_rp$slopeProp_On)
-d_rp=d_rp%>%filter(d_rp$slopeProp_On>0) #remove negative slopes
+#d_rp=d_rp%>%filter(d_rp$slopeProp_On>0) #remove negative slopes
 
 ```
 
@@ -266,7 +266,7 @@ d_rp=d_rp%>%filter(d_rp$slopeProp_On>0) #remove negative slopes
 - No significant group effect on slope
 - Should we control for IQ?
 ```{r, echo=FALSE,warning = FALSE}
-m2<-lm(slopeProp_On~background_sex+background_age+kbit_ss+Subgroup, data=d_rp)
+m2<-lm(slopeProp_On~Sex+Age+kbit_ss+Subgroup, data=d_rp)
 summary(m2)
 lsmeans(m2, list(pairwise ~ Subgroup), adjust = "tukey") 
 ```
@@ -362,8 +362,8 @@ me_1<-mt2%>%
 
 - No significant group differences on first trial
 ```{r,warning = FALSE}
-summary(lm(time~background_age+background_sex+kbit_ss+Subgroup,data=me_1))
-summary(lm(time~background_age+background_sex+kbit_ss+Subgroup,data=mt_1))
+summary(lm(time~Age+Sex+kbit_ss+Subgroup,data=me_1))
+summary(lm(time~Age+Sex+kbit_ss+Subgroup,data=mt_1))
 ```
 
 ### Linear mixed modeling
@@ -375,18 +375,18 @@ mt2<-mt2%>%filter(trial!=1) #exclude trial 1
 #mt2$PartID<-as.factor(mt2$PartID)
 mt2_age_gender_iq = merge(mt2,d[,c(1,3,4,6)],all.x=TRUE)
 
-lmerm1<-lmer(time~background_age+background_sex+kbit_ss+Subgroup*trial+(1+trial|PartID),
+lmerm1<-lmer(time~Age+Sex+kbit_ss+Subgroup*trial+(1+trial|PartID),
         data=mt2_age_gender_iq)
-lmerm2<-lmer(time~background_age+background_sex+kbit_ss+Subgroup*trial+(1|PartID),
+lmerm2<-lmer(time~Age+Sex+kbit_ss+Subgroup*trial+(1|PartID),
         data=mt2_age_gender_iq)
 anova(lmerm1,lmerm2)
 summary(lmerm1)
 ```
 
 ```{r, echo=FALSE,warning = FALSE,include=FALSE}
-lmerm3<-lmer(error~background_age+background_sex+kbit_ss+Subgroup*trial+(1+trial|PartID),
+lmerm3<-lmer(error~Age+Sex+kbit_ss+Subgroup*trial+(1+trial|PartID),
         data=mt2_age_gender_iq)
-lmerm4<-lmer(error~background_age+background_sex+kbit_ss+Subgroup*trial+(1|PartID),
+lmerm4<-lmer(error~Age+Sex+kbit_ss+Subgroup*trial+(1|PartID),
         data=mt2_age_gender_iq)
 anova(lmerm3,lmerm4)
 summary(lmerm3)
@@ -492,7 +492,7 @@ mt_data$slope_mt<-abs(mt_data$slope_mt)
 mt_data$slope_me<-abs(mt_data$slope_me)
 
 d_3 <- d %>%
-   select("PartID","Subgroup", "background_age","background_sex")
+   select("PartID","Subgroup", "Age","Sex")
 
 d_mt <- left_join(mt_data, d_3, by = "PartID")
 d2<-merge(d_rp,d_mt,all = TRUE)
@@ -503,15 +503,15 @@ d2<-merge(d_rp,d_mt,all = TRUE)
 table(d2$Subgroup)
 ```
 
-##### MR Slope analysis
+##### MT Slope analysis
 - A significant group effects for slope, with faster learning for Typ, even after controlling for age, sex, and IQ.
 - Removed participants with slopes above zero (opposite learning pattern-N=2)
 
 ```{r, echo=FALSE,warning = FALSE}
-m3<-lm(slope_mt~background_age+background_sex+kbit_ss+Subgroup, data=d2,na.action = na.exclude)
+m3<-lm(slope_mt~Age+Sex+kbit_ss+Subgroup, data=d2,na.action = na.exclude)
 summary(m3)
 lsmeans(m3, list(pairwise ~ Subgroup), adjust = "tukey")
-m4<-lm(slope_me~background_age+background_sex+kbit_ss+Subgroup, data=d2,na.action = na.exclude)
+m4<-lm(slope_me~Age+Sex+kbit_ss+Subgroup, data=d2,na.action = na.exclude)
 summary(m4)
 lsmeans(m4, list(pairwise ~ Subgroup), adjust = "tukey")
 ```
@@ -641,15 +641,15 @@ fam_trial_tsl_usable <-subset(fam_trial_tsl,PartID %in% usable_tsl_rt)
 fam_trial_tsl_usable_s <-subset(fam_trial_tsl_scale,PartID %in% usable_tsl_rt)
 fam_tsl_age_gender_iq = merge(fam_trial_tsl_usable,d[,c(1,3,4,6)],all.x=TRUE)
 fam_tsl_s_age_gender_iq = merge(fam_trial_tsl_usable_s,d[,c(1,3,4,6)],all.x=TRUE)
-model1_cov <- lm(rt_col~background_age+background_sex+kbit_ss+reindex*Subgroup,data = fam_tsl_age_gender_iq)
+model1_cov <- lm(rt_col~Age+Sex+kbit_ss+reindex*Subgroup,data = fam_tsl_age_gender_iq)
 print(summary(model1_cov))
-model2_cov <- lmer(rt_col~background_age+background_sex+kbit_ss+reindex*Subgroup+(1+reindex|PartID),data=fam_tsl_age_gender_iq)
+model2_cov <- lmer(rt_col~Age+Sex+kbit_ss+reindex*Subgroup+(1+reindex|PartID),data=fam_tsl_age_gender_iq)
 print(summary(model2_cov))
 ```
 - ANCOVA with covariates (RT slope data) - no group effect
 ```{r,echo=FALSE,warning = FALSE}
 subj_table_tsl_gender_iq = merge(subj_table_tsl_usable,d[,c(1,3,4,6)],all.x=TRUE)
-tsl_rt_ancova=aov(rt_slope~Subgroup+background_age+background_sex+kbit_ss,data=subj_table_tsl_gender_iq)
+tsl_rt_ancova=aov(rt_slope~Subgroup+Age+Sex+kbit_ss,data=subj_table_tsl_gender_iq)
 summary(tsl_rt_ancova)
 ```
 
@@ -723,15 +723,15 @@ t.test(dprime~Subgroup,data=subj_table_vsl)
 ```{r,echo=FALSE,warning=FALSE}
 fam_vsl_age_gender_iq = merge(fam_trial_vsl,d[,c(1,3,4,6)],all.x=TRUE)
 fam_vsl_s_age_gender_iq = merge(fam_trial_vsl_scale,d[,c(1,3,4,6)],all.x=TRUE)
-model1_cov <- lm(rt_col~background_age+background_sex+kbit_ss+reindex*Subgroup,data = fam_vsl_age_gender_iq)
+model1_cov <- lm(rt_col~Age+Sex+kbit_ss+reindex*Subgroup,data = fam_vsl_age_gender_iq)
 print(summary(model1_cov))
-model2_cov <- lmer(rt_col~background_age+background_sex+kbit_ss+reindex*Subgroup+(1+reindex|PartID),data=fam_vsl_age_gender_iq)
+model2_cov <- lmer(rt_col~Age+Sex+kbit_ss+reindex*Subgroup+(1+reindex|PartID),data=fam_vsl_age_gender_iq)
 print(summary(model2_cov))
 ```
 - ANCOVA with covariates (from the slope data): marginal group effect. 
 ```{r,echo=FALSE,warning = FALSE}
 subj_table_vsl_gender_iq = merge(subj_table_vsl,d[,c(1,3,4,6)],all.x=TRUE)
-vsl_rt_ancova=aov(rt_slope~Subgroup+background_age+background_sex+kbit_ss,data=subj_table_vsl_gender_iq)
+vsl_rt_ancova=aov(rt_slope~Subgroup+Age+Sex+kbit_ss,data=subj_table_vsl_gender_iq)
 summary(vsl_rt_ancova)
 ```
 
@@ -805,14 +805,14 @@ for (id in all_subj_slope$subj) {
 all_subj_slope_complete = subset(all_subj_slope,tasknum==2)
 all_subj_slope_age_gender_iq = merge(all_subj_slope_complete,d[,c(1,3,4,6)],all.x=TRUE)
 all_fam_trials_age_gender_iq = merge(all_fam_trials,d[,c(1,3,4,6)],all.x=TRUE)
-model_rt_cov <- lm(rt_col~background_age+background_sex+kbit_ss+task*reindex*Subgroup,data=all_fam_trials_age_gender_iq)
+model_rt_cov <- lm(rt_col~Age+Sex+kbit_ss+task*reindex*Subgroup,data=all_fam_trials_age_gender_iq)
 print(summary(model_rt_cov))
-model_rt_lmer_cov <- lmer(rt_col~background_age+background_sex+kbit_ss+task*reindex*Subgroup+(1+task|PartID)+(task|reindex),data=all_fam_trials_age_gender_iq)
+model_rt_lmer_cov <- lmer(rt_col~Age+Sex+kbit_ss+task*reindex*Subgroup+(1+task|PartID)+(task|reindex),data=all_fam_trials_age_gender_iq)
 print(summary(model_rt_lmer_cov))
 ```
 - ANCOVA for interaction between task and group (no significant interaction)
 ```{r,echo=FALSE,warning = FALSE}
-all_sl_slope_ancova = aov(rt_slope_scale~Subgroup*task+background_age+background_sex+kbit_ss,data=all_subj_slope_age_gender_iq)
+all_sl_slope_ancova = aov(rt_slope_scale~Subgroup*task+Age+Sex+kbit_ss,data=all_subj_slope_age_gender_iq)
 print(summary(all_sl_slope_ancova))
 ```
 
@@ -859,23 +859,23 @@ tsl_accuracy_age_gender_iq = merge(tsl_accuracy,d[,c(1,3,4,6)],by="PartID",all.x
 - generalized linear effect modeling within each task (both models failed to converge with IQ included, removing IQ from the covariates fix the issues)
 -  VSL, no group effect
 ```{r,echo=FALSE}
-model_vslacc_lmer_cov <- glmer(corr~background_age+background_sex+Subgroup+(1|PartID)+(1|trial),data=vsl_accuracy_age_gender_iq,family="binomial", control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+model_vslacc_lmer_cov <- glmer(corr~Age+Sex+Subgroup+(1|PartID)+(1|trial),data=vsl_accuracy_age_gender_iq,family="binomial", control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
 print(summary(model_vslacc_lmer_cov))
 ```
 ```{r,echo=FALSE, include=FALSE}
 all_acc_table_age_gender_iq = merge(all_acc_table,d[,c(1,3,4,6)],by="PartID",all.x=TRUE)
 vsl_acc_table = subset(all_acc_table_age_gender_iq,task == "Visual")
 asl_acc_table = subset(all_acc_table_age_gender_iq,task == "Auditory")
-#vslacc_ancova <- aov(subj_corr~background_age+background_sex+kbit_ss+Subgroup,data=vsl_acc_table)
+#vslacc_ancova <- aov(subj_corr~Age+Sex+IQ+Subgroup,data=vsl_acc_table)
 #print(summary(vslacc_ancova))
 ```
 - Significant group effects for ASL (Typ>Dys)
 ```{r,echo=FALSE}
-model_tslacc_lmer_cov <- glmer(corr~background_age+background_sex+Subgroup+(1|PartID)+(1|trial),data=tsl_accuracy_age_gender_iq,family="binomial",control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+model_tslacc_lmer_cov <- glmer(corr~Age+Sex+Subgroup+(1|PartID)+(1|trial),data=tsl_accuracy_age_gender_iq,family="binomial",control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
 print(summary(model_tslacc_lmer_cov))
 ```
 ```{r,echo=FALSE, include=FALSE}
-#aslacc_ancova <- aov(subj_corr~background_age+background_sex+kbit_ss+Subgroup,data=asl_acc_table)
+#aslacc_ancova <- aov(subj_corr~Age+Sex+IQ+Subgroup,data=asl_acc_table)
 #print(summary(aslacc_ancova))
 ```
 
@@ -921,7 +921,7 @@ plot(multi.group_tsl_acc_2, palette=c("blue","red"),rawplot.ylabel = "ASL Accura
 - LME: main effect of task (visual > auditory); main effect of group (TYP > DD); 
 ```{r,echo=FALSE}
 all_accuracy_age_gender_iq = merge(all_accuracy,d[,c(1,3,4,6)],by="PartID",all.x=TRUE)
-model_acc_lmer <- glmer(corr~task*Subgroup+background_age+background_sex+(1+task|PartID)+(1|trial),data=all_accuracy_age_gender_iq,family="binomial",control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+model_acc_lmer <- glmer(corr~task*Subgroup+Age+Sex+(1+task|PartID)+(1|trial),data=all_accuracy_age_gender_iq,family="binomial",control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
 print(summary(model_acc_lmer))
 ```
 
@@ -930,7 +930,7 @@ print(summary(model_acc_lmer))
 all_acc_table_complete = subset(all_acc_table,PartID!="ABCD_1708")
 all_acc_table_complete = subset(all_acc_table_complete,PartID!="ABCD_1727")
 all_acc_table_age_gender_iq = merge(all_acc_table_complete,d[,c(1,3,4,6)],by="PartID",all.x=TRUE)
-model_acc <- aov(subj_corr~task*Subgroup+background_age+background_sex+kbit_ss,data=all_acc_table_age_gender_iq)
+model_acc <- aov(subj_corr~task*Subgroup+Age+Sex+kbit_ss,data=all_acc_table_age_gender_iq)
 print(summary(model_acc))
 ```
 
@@ -962,9 +962,13 @@ ggplot() +
 ```{r,include=FALSE,warning = FALSE}
 d_all_dys = subset(d_all,Subgroup == "DD")
 d_all_typ = subset(d_all,Subgroup == "TYP")
-task_data<-d_all%>%select(gort_ori_ss_2,wrmt_id_ss_2,wrmt_wa_ss_2,ctopp_nonword_raw_2,ctopp_blending_raw_2,wais_dsb_ss_2,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
-task_data_dys<-d_all_dys%>%select(gort_ori_ss_2,wrmt_id_ss_2,wrmt_wa_ss_2,ctopp_nonword_raw_2,ctopp_blending_raw_2,wais_dsb_ss_2,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
-task_data_typ<-d_all_typ%>%select(gort_ori_ss_2,wrmt_id_ss_2,wrmt_wa_ss_2,ctopp_nonword_raw_2,ctopp_blending_raw_2,wais_dsb_ss_2,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
+
+task_data<-d_all%>%ungroup%>%dplyr::select(IQ,WID,WA,Vocabulary,ORI,Elision,Nonword,RAN_2Set,DigitsForward,DigitsBackward,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
+
+task_data_dys<-d_all_dys%>%ungroup%>%dplyr::select(IQ,WID,WA,Vocabulary,ORI,Elision,Nonword,RAN_2Set,DigitsForward,DigitsBackward,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
+
+task_data_typ<-d_all_typ%>%ungroup%>%dplyr::select(IQ,WID,WA,Vocabulary,ORI,Elision,Nonword,RAN_2Set,DigitsForward,DigitsBackward,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
+
 corstars(task_data,method="pearson")#you need to run the function first
 ```
 
@@ -994,7 +998,7 @@ x_d %>%
 
 ```{r, echo=FALSE}
 
-ggplot(task_data_dys, aes(x = wrmt_wa_ss_2, y = slopeProp_On)) +
+ggplot(task_data_dys, aes(x = WA, y = slopeProp_On)) +
   stat_smooth (
     method = "glm",
     formula = y ~ x,
@@ -1006,7 +1010,7 @@ ggplot(task_data_dys, aes(x = wrmt_wa_ss_2, y = slopeProp_On)) +
 ```
 ```{r, echo=FALSE}
 
-ggplot(task_data_dys, aes(x = wrmt_wa_ss_2, y = aud_slope_scale)) +
+ggplot(task_data_dys, aes(x = WA, y = aud_slope_scale)) +
   stat_smooth (
     method = "glm",
     formula = y ~ x,
