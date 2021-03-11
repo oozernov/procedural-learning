@@ -641,10 +641,8 @@ fam_trial_tsl_usable <-subset(fam_trial_tsl,PartID %in% usable_tsl_rt)
 fam_trial_tsl_usable_s <-subset(fam_trial_tsl_scale,PartID %in% usable_tsl_rt)
 fam_tsl_age_gender_iq = merge(fam_trial_tsl_usable,d[,c(1,3,4,6)],all.x=TRUE)
 fam_tsl_s_age_gender_iq = merge(fam_trial_tsl_usable_s,d[,c(1,3,4,6)],all.x=TRUE)
-model1_cov <- lm(rt_col~Age+Sex+kbit_ss+reindex*Subgroup,data = fam_tsl_age_gender_iq)
-print(summary(model1_cov))
 model2_cov <- lmer(rt_col~Age+Sex+kbit_ss+reindex*Subgroup+(1+reindex|PartID),data=fam_tsl_age_gender_iq)
-print(summary(model2_cov))
+summary(model2_cov)
 ```
 - ANCOVA with covariates (RT slope data) - no group effect
 ```{r,echo=FALSE,warning = FALSE}
@@ -717,16 +715,14 @@ t.test(subj_table_vsl$mean_rt~subj_table_vsl$Subgroup)
 ```
 - There is no significant group difference in target detection accuracy for VSL
 ```{r,echo=FALSE,warning = FALSE}
-t.test(dprime~Subgroup,data=subj_table_vsl)
+summary(lm(dprime~Age+Sex+kbit_ss+Subgroup,data=subj_table_vsl))
 ```
 - The DD group had a faster RT acceleration than the TYP group (significant group x trial index interaction tested by lm and marginal interaction tested by lmer)
 ```{r,echo=FALSE,warning=FALSE}
 fam_vsl_age_gender_iq = merge(fam_trial_vsl,d[,c(1,3,4,6)],all.x=TRUE)
 fam_vsl_s_age_gender_iq = merge(fam_trial_vsl_scale,d[,c(1,3,4,6)],all.x=TRUE)
-model1_cov <- lm(rt_col~Age+Sex+kbit_ss+reindex*Subgroup,data = fam_vsl_age_gender_iq)
-print(summary(model1_cov))
 model2_cov <- lmer(rt_col~Age+Sex+kbit_ss+reindex*Subgroup+(1+reindex|PartID),data=fam_vsl_age_gender_iq)
-print(summary(model2_cov))
+summary(model2_cov)
 ```
 - ANCOVA with covariates (from the slope data): marginal group effect. 
 ```{r,echo=FALSE,warning = FALSE}
@@ -805,8 +801,7 @@ for (id in all_subj_slope$subj) {
 all_subj_slope_complete = subset(all_subj_slope,tasknum==2)
 all_subj_slope_age_gender_iq = merge(all_subj_slope_complete,d[,c(1,3,4,6)],all.x=TRUE)
 all_fam_trials_age_gender_iq = merge(all_fam_trials,d[,c(1,3,4,6)],all.x=TRUE)
-model_rt_cov <- lm(rt_col~Age+Sex+kbit_ss+task*reindex*Subgroup,data=all_fam_trials_age_gender_iq)
-print(summary(model_rt_cov))
+
 model_rt_lmer_cov <- lmer(rt_col~Age+Sex+kbit_ss+task*reindex*Subgroup+(1+task|PartID)+(task|reindex),data=all_fam_trials_age_gender_iq)
 print(summary(model_rt_lmer_cov))
 ```
