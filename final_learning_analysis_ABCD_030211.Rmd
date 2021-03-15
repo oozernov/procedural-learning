@@ -155,6 +155,7 @@ rp2_age_gender_iq = merge(rp2,d[,c(1,3,4,6)],all.x=TRUE)
 #### RP Linear mixed-effect modeling
 - model with trial and participant as random effects (controlling for age and sex)
 - borderline significant effect trial x subgroup (faster learning in Dys)
+
 ```{r, echo=FALSE,warning = FALSE}
 lmerrp1 <- lmer(prop_on~Subgroup*trial +Age+Sex + (1|PartID),data=rp2_age_gender_iq)
 lmerrp2 <- lmer(prop_on~Subgroup*trial +Age+Sex + (1+trial|PartID),data=rp2_age_gender_iq)
@@ -262,9 +263,10 @@ hist(d_rp$slopeProp_On)
 ```
 
 #### ANCOVA on individual RP slopes
-- Excluded negative slopes (n=5)
+
 - No significant group effect on slope
 - Should we control for IQ?
+
 ```{r, echo=FALSE,warning = FALSE}
 m2<-lm(slopeProp_On~Sex+Age+kbit_ss+Subgroup, data=d_rp)
 summary(m2)
@@ -485,11 +487,11 @@ for (subj in abcd_ids) {
 mt_data <- data.frame(PartID=abcd_ids,slope_me = m_list5, slope_mt = m_list7)
 mt_data$slope_me<-as.numeric(mt_data$slope_me)
 hist(mt_data$slope_mt)
-mt_data<-mt_data%>%filter(mt_data$slope_mt<0) #filter out postitive slopes (n=2)
+#mt_data<-mt_data%>%filter(mt_data$slope_mt<0) #filter out postitive slopes (n=2)
 mt_data<-mt_data%>%filter(mt_data$slope_mt>-300) #filter out postitive slopes (n=2)
 
-mt_data$slope_mt<-abs(mt_data$slope_mt)
-mt_data$slope_me<-abs(mt_data$slope_me)
+#mt_data$slope_mt<-abs(mt_data$slope_mt)
+#mt_data$slope_me<-abs(mt_data$slope_me)
 
 d_3 <- d %>%
    select("PartID","Subgroup", "Age","Sex")
@@ -647,7 +649,7 @@ summary(model2_cov)
 - ANCOVA with covariates (RT slope data) - no group effect
 ```{r,echo=FALSE,warning = FALSE}
 subj_table_tsl_gender_iq = merge(subj_table_tsl_usable,d[,c(1,3,4,6)],all.x=TRUE)
-tsl_rt_ancova=aov(rt_slope~Subgroup+Age+Sex+kbit_ss,data=subj_table_tsl_gender_iq)
+tsl_rt_ancova=lm(rt_slope~Subgroup+Age+Sex+kbit_ss,data=subj_table_tsl_gender_iq)
 summary(tsl_rt_ancova)
 ```
 
@@ -701,13 +703,14 @@ plot(multi.group_asl_2, palette=c("blue","red"),rawplot.ylabel = "ASL Time Slope
 ```{r,echo=FALSE,warning=FALSE}
 data<-as_tibble(subj_table_vsl)
 data %>%
-  group_by(Subgroup) %>%
+  group_by(PartID,Subgroup) %>%
   dplyr::summarise(
           count = n(),
           rt = qwraps2::mean_sd(mean_rt),
           slope = qwraps2::mean_sd(rt_slope),
           d_prime = qwraps2::mean_sd(dprime)
-          )
+          ) 
+
 ```
 - There is no significant group difference in baseline speed for VSL.
 ```{r,echo=FALSE,warning = FALSE}
@@ -715,7 +718,8 @@ t.test(subj_table_vsl$mean_rt~subj_table_vsl$Subgroup)
 ```
 - There is no significant group difference in target detection accuracy for VSL
 ```{r,echo=FALSE,warning = FALSE}
-summary(lm(dprime~Age+Sex+kbit_ss+Subgroup,data=subj_table_vsl))
+subj_table_vsl_iq_age = merge(data,d[,c(1,3,4,6)],all.x=TRUE)
+summary(lm(dprime~Age+Sex+kbit_ss+Subgroup,data=subj_table_vsl_iq_age))
 ```
 - The DD group had a faster RT acceleration than the TYP group (significant group x trial index interaction tested by lm and marginal interaction tested by lmer)
 ```{r,echo=FALSE,warning=FALSE}
@@ -807,7 +811,7 @@ print(summary(model_rt_lmer_cov))
 ```
 - ANCOVA for interaction between task and group (no significant interaction)
 ```{r,echo=FALSE,warning = FALSE}
-all_sl_slope_ancova = aov(rt_slope_scale~Subgroup*task+Age+Sex+kbit_ss,data=all_subj_slope_age_gender_iq)
+all_sl_slope_ancova = lm(rt_slope_scale~Subgroup*task+Age+Sex+kbit_ss,data=all_subj_slope_age_gender_iq)
 print(summary(all_sl_slope_ancova))
 ```
 
@@ -925,7 +929,7 @@ print(summary(model_acc_lmer))
 all_acc_table_complete = subset(all_acc_table,PartID!="ABCD_1708")
 all_acc_table_complete = subset(all_acc_table_complete,PartID!="ABCD_1727")
 all_acc_table_age_gender_iq = merge(all_acc_table_complete,d[,c(1,3,4,6)],by="PartID",all.x=TRUE)
-model_acc <- aov(subj_corr~task*Subgroup+Age+Sex+kbit_ss,data=all_acc_table_age_gender_iq)
+model_acc <- lm(subj_corr~task*Subgroup+Age+Sex+kbit_ss,data=all_acc_table_age_gender_iq)
 print(summary(model_acc))
 ```
 
@@ -958,11 +962,11 @@ ggplot() +
 d_all_dys = subset(d_all,Subgroup == "DD")
 d_all_typ = subset(d_all,Subgroup == "TYP")
 
-task_data<-d_all%>%ungroup%>%dplyr::select(IQ,WID,WA,Vocabulary,ORI,Elision,Nonword,RAN_2Set,DigitsForward,DigitsBackward,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
+task_data<-d_all%>%ungroup%>%dplyr::select(IQ,WID,WA,Vocabulary,Elision,Nonword,RAN_Objects,RAN_2Set,DigitsForward,DigitsBackward,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
 
-task_data_dys<-d_all_dys%>%ungroup%>%dplyr::select(IQ,WID,WA,Vocabulary,ORI,Elision,Nonword,RAN_2Set,DigitsForward,DigitsBackward,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
+task_data_dys<-d_all_dys%>%ungroup%>%dplyr::select(IQ,WID,WA,Vocabulary,Elision,Nonword,RAN_Objects,RAN_2Set,DigitsForward,DigitsBackward,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
 
-task_data_typ<-d_all_typ%>%ungroup%>%dplyr::select(IQ,WID,WA,Vocabulary,ORI,Elision,Nonword,RAN_2Set,DigitsForward,DigitsBackward,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
+task_data_typ<-d_all_typ%>%ungroup%>%dplyr::select(IQ,WID,WA,Vocabulary,Elision,Nonword,RAN_Objects,RAN_2Set,DigitsForward,DigitsBackward,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
 
 corstars(task_data,method="pearson")#you need to run the function first
 ```
@@ -1005,14 +1009,14 @@ ggplot(task_data_dys, aes(x = WA, y = slopeProp_On)) +
 ```
 ```{r, echo=FALSE}
 
-ggplot(task_data_dys, aes(x = WA, y = aud_slope_scale)) +
+ggplot(task_data_dys, aes(x = RAN_2Set, y = aud_slope_scale)) +
   stat_smooth (
     method = "glm",
     formula = y ~ x,
     colour = "black",
     size = 1) +
   geom_point(aes(size = 3)) +
-  labs(x = "Word Attack ", y = "ASL Slope") +
+  labs(x = "RAN 2Set ", y = "ASL Slope") +
   theme(axis.title = element_text(family = "Trebuchet MS", size = 14))+ theme(panel.background = element_blank(),legend.position = "none")
 ```
 
