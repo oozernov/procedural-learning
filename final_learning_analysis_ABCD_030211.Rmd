@@ -161,11 +161,10 @@ rp2_age_gender_iq = merge(rp2,d[,c(1,3,4,6)],all.x=TRUE)
 - borderline significant effect trial x subgroup (faster learning in Dys)
 
 ```{r, echo=FALSE,warning = FALSE}
-#lmerrp1 <- lmer(prop_on~Subgroup*trial +Age+Sex + (1|PartID),data=rp2_age_gender_iq)
+lmerrp1 <- lmer(prop_on~Subgroup*trial +Age+Sex + (1|PartID),data=rp2_age_gender_iq)
 lmerrp2 <- lmer(prop_on~Subgroup*trial +Age+Sex + kbit_ss+ (1+trial|PartID),data=rp2_age_gender_iq)
 #lmerrp3 <- lmer(prop_on~Subgroup*trial +Age+Sex + (1|trial),data=rp2_age_gender_iq)
 anova(lmerrp1,lmerrp2)
-#anova(lmerrp2,lmerrp3)
 anova(lmerrp2) #borderline significant effect for Subgroup x trial
 sjstats::eta_sq(lmerrp2)
 summary(lmerrp2)
