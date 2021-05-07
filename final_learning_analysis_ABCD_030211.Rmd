@@ -502,7 +502,7 @@ ggplot(data = mtEPlot, aes(x=trial, y=meanE, linetype = Subgroup))+
     legend.key.size = unit(1, "cm"),
     axis.text.x = element_text(size = 15),
     axis.text.y = element_text(size = 15))  +
-  labs(x = "Trials", y = "Errors") +
+  labs(x = "Trials", y = "Number of Errors") +
   theme(panel.background = element_rect(fill = "white", colour = "grey50")) +
   theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
 ```
