@@ -20,16 +20,17 @@ knitr::opts_chunk$set(echo = TRUE)
 Packages <- c("dplyr", "stats", "psych", "ggplot2", "lme4",
               "gridExtra", "dplyr","caret","tidyverse",
               "plyr","lmerTest","ggpubr","nlme","emmeans","rstatix","ggbeeswarm",
-              "arsenal","sjstats"
+              "arsenal","sjstats","r2glmm"
 )
 
 lapply(Packages, library, character.only = TRUE)
 source("corstars_function.R")
+
 ####Organizational ####
 
 #set subject directory
 #setwd("~/Dropbox (MIT)/learning_analysis")
-#setwd("~/Dropbox (MIT)/Github/procedural-learning")
+setwd("~/Dropbox (MIT)/Github/procedural-learning")
 
 #import pocedural.csv file
 d <- read.csv('procedural_data072320.csv',stringsAsFactors = FALSE,skipNul = TRUE,
@@ -91,6 +92,39 @@ summary(tableby(Subgroup ~ ., data = adult_table,
 
 ```
 
+# Demographics
+```{r, echo=FALSE,warning = FALSE}
+demo<-read.csv("abcd_demo.csv")
+d_demo<-merge(demo, d)
+x<-d%>%ungroup%>%dplyr::select(Subgroup,Age,IQ,WID,WA,SWE,PDE,
+                                       Vocabulary,ORI,Elision,ORI,Nonword,RAN_2Set,DigitsForward,DigitsBackward)
+x<-na.omit(x)
+
+d_demo<-merge(d_demo,x)
+table(d_demo$read_delay,d_demo$Subgroup)
+table(d_demo$lang_delay,d_demo$Subgroup)
+table(d_demo$ADHD,d_demo$Subgroup)
+demo_table<-d_demo%>%select(Subgroup,read_delay,lang_delay,dyslexia,ADHD,self_ed,starts_with('race'),household_income,Sex)
+
+demo_table$self_ed <- factor(demo_table$self_ed,
+                                levels = c(1,2,3,4,5,6,7),
+                                labels = c("Less7Grd", "JuniorHigh", "HighSchool","PartialCollege","College","Masters","Doctorate"))
+demo_table$household_income <- factor(demo_table$household_income,
+                                levels = c(1,2,3,4),
+                                labels = c("<30k", "30-60k", "60-100k",">100k"))
+
+cat.names = demo_table %>% select_if(is.integer) %>% colnames()
+demo_table2=demo_table
+demo_table2[,cat.names] = lapply(demo_table2[,cat.names], as.factor)
+str(demo_table2[,cat.names])
+
+at<-summary(tableby(Subgroup ~ ., data = demo_table2,
+                     control=tableby.control(numeric.stats="meansd", total=FALSE)),title = "Adult Descriptives",text=TRUE,digits=2, digits.p=3)
+at
+
+
+```
+
 
 # Rotary Pursuit
 
@@ -145,7 +179,19 @@ hist(rp2$prop_on)
 t.test(d$rotarypursuit_0_2~d$Subgroup)
 m1<-lm(rotarypursuit_0_2~Age+Sex+Subgroup,data=d)
 anova(m1)
-sjstats::eta_sq(m1)
+#sjstats::eta_sq(m1)
+r2beta(m1, method = "nsj")
+
+
+```
+
+#### RP Realiability ####
+```{r,echo=FALSE,warning = FALSE}
+rp3<-rp2%>%ungroup%>%select(PartID,prop_on,trial)
+rp_w<- spread(rp3, trial, prop_on)
+table(rp_w$Subgroup) #sample for RP
+rp_w<-select(rp_w,-PartID)
+psych::alpha(rp_w)
 
 ```
 
@@ -161,13 +207,13 @@ rp2_age_gender_iq = merge(rp2,d[,c(1,3,4,6)],all.x=TRUE)
 - borderline significant effect trial x subgroup (faster learning in Dys)
 
 ```{r, echo=FALSE,warning = FALSE}
-#lmerrp1 <- lmer(prop_on~Subgroup*trial +Age+Sex + (1|PartID),data=rp2_age_gender_iq)
+lmerrp1 <- lmer(prop_on~Subgroup*trial +Age+Sex + (1|PartID),data=rp2_age_gender_iq)
 lmerrp2 <- lmer(prop_on~Subgroup*trial +Age+Sex + kbit_ss+ (1+trial|PartID),data=rp2_age_gender_iq)
 #lmerrp3 <- lmer(prop_on~Subgroup*trial +Age+Sex + (1|trial),data=rp2_age_gender_iq)
 anova(lmerrp1,lmerrp2)
-#anova(lmerrp2,lmerrp3)
 anova(lmerrp2) #borderline significant effect for Subgroup x trial
-sjstats::eta_sq(lmerrp2)
+#sjstats::eta_sq(lmerrp2)
+r2beta(lmerrp2, method = "nsj")
 summary(lmerrp2)
 ```
 - within DD group
@@ -345,6 +391,20 @@ mt$error <- as.numeric(mt$error)
 mt$trial <- as.numeric(mt$trial)
 ```
 
+#### RP Realiability ####
+```{r,echo=FALSE,warning = FALSE}
+mt3<-mt%>%ungroup%>%select(PartID,time,trial)
+mt4<-mt%>%ungroup%>%select(PartID,error,trial)
+
+mt_t_w<- spread(mt3, trial, time)
+mt_e_w<- spread(mt4, trial, error)
+mt_t_w<-select(mt_t_w,-PartID)
+mt_e_w<-select(mt_e_w,-PartID)
+psych::alpha(mt_t_w)
+psych::alpha(mt_e_w)
+
+
+```
 
 ```{r,include=FALSE, warning=FALSE}
 
@@ -391,7 +451,8 @@ eta_sq(mtri1)
 t.test(error~Subgroup,data=me_1)
 mtri2<-lm(time~Age+Sex+kbit_ss+Subgroup,data=mt_1)
 anova(mtri2)
-eta_sq(mtri2)
+#eta_sq(mtri2)
+
 t.test(time~Subgroup,data=mt_1)
 ```
 
@@ -409,12 +470,12 @@ lmerm1<-lmer(time~Age+Sex+kbit_ss+Subgroup*trial+(1+trial|PartID),
 lmerm2<-lmer(time~Age+Sex+kbit_ss+Subgroup*trial+(1|PartID),
         data=mt2_age_gender_iq)
 #lmerm3<-lmer(time~Age+Sex+kbit_ss+Subgroup*trial+(1|trial),
-        data=mt2_age_gender_iq)
+        #data=mt2_age_gender_iq)
 anova(lmerm1,lmerm2)
 #anova(lmerm1,lmerm3)
 summary(lmerm1)
 anova(lmerm1)
-eta_sq(lmerm1)
+r2beta(lmerm1, method = "nsj")
 ```
 
 ```{r, echo=FALSE,warning = FALSE,include=FALSE}
@@ -423,11 +484,11 @@ lmerm4<-lmer(error~Age+Sex+kbit_ss+Subgroup*trial+(1+trial|PartID),
 lmerm5<-lmer(error~Age+Sex+kbit_ss+Subgroup*trial+(1|PartID),
         data=mt2_age_gender_iq)
 #lmerm6<-lmer(error~Age+Sex+kbit_ss+Subgroup*trial+(1|trial),
-        data=mt2_age_gender_iq)
+        #data=mt2_age_gender_iq)
 anova(lmerm4,lmerm5)
 #anova(lmerm4,lmerm6)
 anova(lmerm4)
-eta_sq(lmerm4)
+ r2beta(lmerm4, method = "nsj")
 summary(lmerm4)
 ```
 
@@ -503,7 +564,7 @@ ggplot(data = mtEPlot, aes(x=trial, y=meanE, linetype = Subgroup))+
     legend.key.size = unit(1, "cm"),
     axis.text.x = element_text(size = 15),
     axis.text.y = element_text(size = 15))  +
-  labs(x = "Trials", y = "Errors") +
+  labs(x = "Trials", y = "Number of Errors") +
   theme(panel.background = element_rect(fill = "white", colour = "grey50")) +
   theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
 ```
@@ -656,6 +717,28 @@ names(fam_trial_tsl_scale)[names(fam_trial_tsl_scale)=="subj"] <- "PartID"
 
 ```
 
+####Reliability####
+Zhenghan, can you please calculate reliability on the SL data? I couldn't figure out how to get clean item, I figured it would be faster for you :-)
+```{r}
+# fam_trial_vsl
+# fam_trial_vsl_scale
+# fam_trial_tsl
+# fam_trial_tsl_scale
+# 
+# sl1<-fam_trial_vsl%>%ungroup%>%select(PartID,rt_col,trial)
+# sl2<-mt%>%ungroup%>%select(PartID,error,trial)
+# 
+# 
+# sl1_w<- spread(sl1, trial, rt_col)
+# mt_e_w<- spread(mt4, trial, error)
+# mt_t_w<-select(mt_t_w,-PartID)
+# mt_e_w<-select(mt_e_w,-PartID)
+# psych::alpha(sl1_w)
+# psych::alpha(mt_e_w)
+
+
+```
+
 ```{r, echo=FALSE,warning = FALSE,include=FALSE}
 data<-as_tibble(subj_table_tsl)
 data %>%
@@ -707,6 +790,8 @@ fam_tsl_age_gender_iq = merge(fam_trial_tsl_usable,d[,c(1,3,4,6)],all.x=TRUE)
 fam_tsl_s_age_gender_iq = merge(fam_trial_tsl_usable_s,d[,c(1,3,4,6)],all.x=TRUE)
 model2_cov <- lmer(rt_col~Age+Sex+kbit_ss+reindex*Subgroup+(1+reindex|PartID),data=fam_tsl_age_gender_iq)
 summary(model2_cov)
+r2beta(model2_cov, method = "nsj")
+
 ```
 - ANCOVA with covariates (RT slope data) - no group effect
 ```{r,echo=FALSE,warning = FALSE}
@@ -792,6 +877,8 @@ fam_vsl_age_gender_iq = merge(fam_trial_vsl,d[,c(1,3,4,6)],all.x=TRUE)
 fam_vsl_s_age_gender_iq = merge(fam_trial_vsl_scale,d[,c(1,3,4,6)],all.x=TRUE)
 model2_cov <- lmer(rt_col~Age+Sex+kbit_ss+reindex*Subgroup+(1+reindex|PartID),data=fam_vsl_age_gender_iq)
 summary(model2_cov)
+r2beta(model2_cov, method = "nsj")
+
 ```
 - ANCOVA with covariates (from the slope data): marginal group effect. 
 ```{r,echo=FALSE,warning = FALSE}
@@ -1055,6 +1142,20 @@ x <- correlate(task_data)
 x %>% 
   focus(slope_me,slope_mt, slopeProp_On, vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)%>% fashion()
 
+```
+```{r, echo=FALSE, include=TRUE}
+task_only<-d_all%>%ungroup%>%dplyr::select(slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
+cor<-round(cor(task_only,use="complete.obs"),2)
+cor
+upper<-cor
+upper[upper.tri(cor)]<-""
+upper<-as.data.frame(upper)
+source('correlation_matrix_function.R')
+correlation_matrix(task_only)
+save_correlation_matrix(task_only,
+                        filename = "task_correlations.csv",
+                        digits=3,
+                        use='lower')
 ```
 
 ### Dys only
