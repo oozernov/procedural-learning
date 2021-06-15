@@ -717,28 +717,6 @@ names(fam_trial_tsl_scale)[names(fam_trial_tsl_scale)=="subj"] <- "PartID"
 
 ```
 
-####Reliability####
-Zhenghan, can you please calculate reliability on the SL data? I couldn't figure out how to get clean item, I figured it would be faster for you :-)
-```{r}
-# fam_trial_vsl
-# fam_trial_vsl_scale
-# fam_trial_tsl
-# fam_trial_tsl_scale
-# 
-# sl1<-fam_trial_vsl%>%ungroup%>%select(PartID,rt_col,trial)
-# sl2<-mt%>%ungroup%>%select(PartID,error,trial)
-# 
-# 
-# sl1_w<- spread(sl1, trial, rt_col)
-# mt_e_w<- spread(mt4, trial, error)
-# mt_t_w<-select(mt_t_w,-PartID)
-# mt_e_w<-select(mt_e_w,-PartID)
-# psych::alpha(sl1_w)
-# psych::alpha(mt_e_w)
-
-
-```
-
 ```{r, echo=FALSE,warning = FALSE,include=FALSE}
 data<-as_tibble(subj_table_tsl)
 data %>%
@@ -878,7 +856,6 @@ fam_vsl_s_age_gender_iq = merge(fam_trial_vsl_scale,d[,c(1,3,4,6)],all.x=TRUE)
 model2_cov <- lmer(rt_col~Age+Sex+kbit_ss+reindex*Subgroup+(1+reindex|PartID),data=fam_vsl_age_gender_iq)
 summary(model2_cov)
 r2beta(model2_cov, method = "nsj")
-
 ```
 - ANCOVA with covariates (from the slope data): marginal group effect. 
 ```{r,echo=FALSE,warning = FALSE}
@@ -1115,7 +1092,28 @@ ggplot() +
   scale_fill_brewer(palette = 'Greys') +
   scale_color_manual(values=cbbPalette)
 ```
+#### VSL reliability
+```{r,include=FALSE,warning = FALSE}
+d <- matrix(nrow=40,ncol=32)
+for(i in seq(from=1,to=40,by=1)){d[i,] <- rbind(vsl_accuracy$corr[((i-1)*32+1):(i*32)])}
+psych::alpha(d,check.keys = TRUE)$total$std.alpha
 
+vsl_rt <- subset(fam_trial_vsl,select=c(4,3,6))
+vsl_rt_w<- spread(vsl_rt, reindex, rt_col)
+vsl_rt_w<-select(vsl_rt_w,-PartID)
+psych::alpha(vsl_rt_w,check.keys = TRUE)$total$std.alpha
+```
+#### ASL reliability
+```{r,include=FALSE,warning = FALSE}
+d <- matrix(nrow=40,ncol=32)
+for(i in seq(from=1,to=40,by=1)){d[i,] <- rbind(tsl_accuracy$corr[((i-1)*32+1):(i*32)])}
+psych::alpha(d,check.keys = TRUE)$total$std.alpha
+
+asl_rt <- subset(fam_trial_tsl_usable,select=c(4,3,6))
+asl_rt_w<- spread(asl_rt, reindex, rt_col)
+asl_rt_w<-select(asl_rt_w,-PartID)
+psych::alpha(asl_rt_w,check.keys = TRUE)$total$std.alpha
+```
 
 # Cross-task correlations
 
