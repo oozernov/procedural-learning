@@ -121,7 +121,7 @@ str(demo_table2[,cat.names])
 at<-summary(tableby(Subgroup ~ ., data = demo_table2,
                      control=tableby.control(numeric.stats="meansd", total=FALSE)),title = "Adult Descriptives",text=TRUE,digits=2, digits.p=3)
 at
-
+cohen.d(x$DigitsBackward,x$Subgroup)
 
 ```
 
