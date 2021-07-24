@@ -79,16 +79,17 @@ names(d)[names(d)=="ran_objects_ss_2"] <- "RAN_Objects"
 names(d)[names(d)=="wais_dsb_ss_2"] <- "DigitsBackward"
 names(d)[names(d)=="wais_dsf_ss_2"] <- "DigitsForward"
 names(d)[names(d)=="kbit_ss_2"] <- "IQ"
+d$DigitsForward=ifelse(d$DigitsForward==88,8,d$DigitsForward)#correct one typo
 
-adult_table<-d%>%ungroup%>%dplyr::select(Subgroup,Age,IQ,WID,WA,SWE,PDE,
+adult_table<-d%>%ungroup%>%dplyr::select(Subgroup,Sex,Age,IQ,WID,WA,SWE,PDE,
                                        Vocabulary,ORI,Elision,ORI,Nonword,RAN_2Set,DigitsForward,DigitsBackward)
 abcd_b<-na.omit(adult_table)
-table(d$Subgroup,d$Sex)
+table(abcd_b$Subgroup,abcd_b$Sex) #1=Female, 2=Male
 summary(tableby(Subgroup ~ ., data = adult_table,
                      control=tableby.control(numeric.stats="meansd", total=FALSE)),title = " Descriptives",text=TRUE,digits=2, digits.p=3)
 #arsenal::write2word(at, "descriptives.doc", title="Descriptives")
 
-#abcd_b %>% cohens_d(Nonword~ DD, var.equal = TRUE)
+cohens_d(d$DigitsForward~ d$DD, var.equal = TRUE)
 
 ```
 
@@ -121,7 +122,7 @@ str(demo_table2[,cat.names])
 at<-summary(tableby(Subgroup ~ ., data = demo_table2,
                      control=tableby.control(numeric.stats="meansd", total=FALSE)),title = "Adult Descriptives",text=TRUE,digits=2, digits.p=3)
 at
-cohen.d(x$DigitsBackward,x$Subgroup)
+cohen.d(abcd_b$DigitsForward,abcd_b$Subgroup)
 
 ```
 
