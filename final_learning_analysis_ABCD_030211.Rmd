@@ -392,7 +392,7 @@ mt$error <- as.numeric(mt$error)
 mt$trial <- as.numeric(mt$trial)
 ```
 
-#### RP Realiability ####
+#### MT Realiability ####
 ```{r,echo=FALSE,warning = FALSE}
 mt3<-mt%>%ungroup%>%select(PartID,time,trial)
 mt4<-mt%>%ungroup%>%select(PartID,error,trial)
