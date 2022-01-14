@@ -274,108 +274,6 @@ library(grid)
 grid.draw(mylegend)
 
 ```
-
-### RP Slope Analysis
-
-```{r, echo=FALSE, include=FALSE,warning = FALSE}
-d_glm_fit_list <- vector(mode = "list", length = nrow(rp)*2)
-index <- 0
-abcd_ids=unique(rp2$PartID)
-b_list=c()
-m_list = c()
-
-for (subj in abcd_ids) { #d_export is my list of subject
-  #for (a in c("d", "b"))
-  # index <- index + 1
-  #print(subj)
-  d_subj <- filter(rp2, PartID==subj)
-  subj_model <- lm(formula=On ~ trial, #complettion time(On/Off) ~trial
-                    data = d_subj)
-  b_list[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
-  m_list[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
-
-}
-
-#Off Slopes
-d_glm_fit_list <- vector(mode = "list", length = nrow(rp)*2)
-index <- 0
-
-abcd_ids=unique(rp$PartID)
-b_list2=c()
-m_list2 = c()
-
-for (subj in abcd_ids) { #d_export is my list of subject
-  #for (a in c("d", "b"))
-  # index <- index + 1
-  #print(subj)
-  d_subj <- dplyr::filter(rp2, PartID==subj)
-  subj_model <- lm(formula=Off ~ poly(trial,3,raw=TRUE), #complettion time(On/Off) ~trial
-                    data = d_subj)
-  b_list2[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
-  m_list2[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
-
-}
-
-#PropOn Slopes
-
-d_glm_fit_list <- vector(mode = "list", length = nrow(rp)*2)
-index <- 0
-
-abcd_ids=unique(rp$PartID)
-b_list4=c()
-m_list4 = c()
-
-for (subj in abcd_ids) { #d_export is my list of subject
-  #for (a in c("d", "b"))
-  # index <- index + 1
-  #print(subj)
-  d_subj <- filter(rp2, PartID==subj)
-  subj_model <- lm(formula=prop_on ~ trial, #complettion time(On/Off) ~trial
-                    data = d_subj)
-  b_list4[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
-  m_list4[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
-}
-
-#Create a new Data Frame containing the slopes
-rp_data <- data.frame(PartID=abcd_ids,slopeOn = m_list, slopeOff = m_list2, slopeProp_On = m_list4)
-d_rp<-merge(d,rp_data) 
-```
-
-```{r, echo=FALSE,include=FALSE, warning = FALSE}
-hist(d_rp$slopeProp_On)
-#d_rp=d_rp%>%filter(d_rp$slopeProp_On>0) #remove negative slopes
-
-```
-
-#### ANCOVA on individual RP slopes
-
-- No significant group effect on slope
-- Should we control for IQ?
-
-```{r, echo=FALSE,warning = FALSE}
-m2<-lm(slopeProp_On~Sex+Age+kbit_ss+Subgroup, data=d_rp)
-summary(m2)
-lsmeans(m2, list(pairwise ~ Subgroup), adjust = "tukey") 
-```
-
-#### Plotting RP Slope Effects
-```{r, echo=FALSE,warning = FALSE}
-plot_rp_slope<-d_rp%>%dplyr::select('PartID',"Subgroup","slopeProp_On")
-plot_rp_slope<-na.omit(plot_rp_slope)
-
-rp_slope = plot_rp_slope %>%
-  dplyr::group_by(PartID, Subgroup) %>%
-  dplyr::summarise(mean = mean(slopeProp_On, na.rm = T))
-
-
-multi.group3 <-
-  rp_slope %>%
-  dabestr::dabest(Subgroup,mean,
-         idx = list(c("TYP",'DD')),
-         paired = FALSE)
-two.group.unpaired.meandiff <- dabestr::cohens_d(multi.group3)
-plot(two.group.unpaired.meandiff, palette=c("blue","red"),rawplot.ylabel = "RP Prop On Slope")
-```
 \newpage
 
 # Mirror Tracing
@@ -579,123 +477,6 @@ mt_e2<-mt_e + theme(legend.position = "none")
 ggsave("mt_e011222.png",width=6, height=4)
 ```
 
-### Mirror Tracing Slopes
-
-```{r, echo=FALSE,warning = FALSE,include=FALSE}
-mt3<-na.omit(mt2)
-d_glm_fit_list <- vector(mode = "list", length = nrow(mt)*2)
-index <- 0
-abcd_ids=unique(mt3$PartID)
-b_list5=c()
-m_list5 = c()
-
-for (subj in abcd_ids) {
- # print(subj)
-  d_subj <- filter(mt3, PartID==subj)
-  subj_model <- lm(error ~ trial, #errors
-                    data = d_subj)
-  b_list5[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
-  m_list5[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
-}
-```
-
-```{r, echo=FALSE,warning = FALSE,include=FALSE}
-d_glm_fit_list <- vector(mode = "list", length = nrow(mt)*2)
-index <- 0
-abcd_ids=unique(mt3$PartID)
-b_list7=c()
-m_list7 = c()
-
-for (subj in abcd_ids) {
- print(subj)
-  d_subj <- filter(mt3, PartID==subj)
-  subj_model <- lm(time ~ trial, #errors
-                    data = d_subj)
-  b_list7[subj] <- as.numeric(subj_model$coefficients[1]) # coefficient intercept
-  m_list7[subj] <- as.numeric(subj_model$coefficients[2]) # coefficient slope
-}
-
-
-#new data frame containing the mirror slopes
-mt_data <- data.frame(PartID=abcd_ids,slope_me = m_list5, slope_mt = m_list7)
-mt_data$slope_me<-as.numeric(mt_data$slope_me)
-hist(mt_data$slope_mt)
-#mt_data<-mt_data%>%filter(mt_data$slope_mt<0) #filter out postitive slopes (n=2)
-mt_data<-mt_data%>%filter(mt_data$slope_mt>-300) #filter out postitive slopes (n=2)
-
-#mt_data$slope_mt<-abs(mt_data$slope_mt)
-#mt_data$slope_me<-abs(mt_data$slope_me)
-
-d_3 <- d %>%
-   select("PartID","Subgroup", "Age","Sex")
-
-d_mt <- left_join(mt_data, d_3, by = "PartID")
-d2<-merge(d_rp,d_mt,all = TRUE)
-```
-
-## Final Sample
-```{r, echo=FALSE,warning = FALSE}
-table(d2$Subgroup)
-```
-
-##### MT Slope analysis
-- A significant group effects for slope, with faster learning for Typ, even after controlling for age, sex, and IQ.
-- Removed participants with slopes above zero (opposite learning pattern-N=2)
-
-```{r, echo=FALSE,warning = FALSE}
-m3<-lm(slope_mt~Age+Sex+kbit_ss+Subgroup, data=d2,na.action = na.exclude)
-summary(m3)
-lsmeans(m3, list(pairwise ~ Subgroup), adjust = "tukey")
-m4<-lm(slope_me~Age+Sex+kbit_ss+Subgroup, data=d2,na.action = na.exclude)
-summary(m4)
-lsmeans(m4, list(pairwise ~ Subgroup), adjust = "tukey")
-```
-
-## MT: Plot Slope Effects
-
-```{r, echo=FALSE,warning = FALSE}
-
-mt_slope<-d2%>%dplyr::select("PartID","Subgroup","slope_mt")
-mt_slope$Subgroup<-as.factor(mt_slope$Subgroup)
-
-mt_slope2<-mt_slope%>%dplyr::select('PartID',"Subgroup","slope_mt")
-mt_slope2<-na.omit(mt_slope2)
-
-multi.group_mt = mt_slope2 %>%
-  dplyr::group_by(PartID, Subgroup) %>%
-  dplyr::summarise(mean = mean(slope_mt, na.rm = T))
-
-
-multi.group_mt <-
-  multi.group_mt %>%
-  dabestr::dabest(Subgroup,mean,
-         idx = list(c("TYP",'DD')),
-         paired = FALSE)
-two.group.unpaired.meandiff_mt <- dabestr::cohens_d(multi.group_mt)
-
-plot(two.group.unpaired.meandiff_mt, palette=c("blue","red"),rawplot.ylabel = "MT Time Slope")
-```
-
-
-```{r, echo=FALSE,warning = FALSE}
-me_slope<-d2%>%dplyr::select("PartID","Subgroup","slope_me")
-
-me_slope2<-na.omit(me_slope)
-
-multi.group_me = me_slope2 %>%
-  dplyr::group_by(PartID, Subgroup) %>%
-  dplyr::summarise(mean = mean(slope_me, na.rm = T))
-
-
-multi.group_me <-
-  multi.group_me %>%
-  dabestr::dabest(Subgroup,mean,
-         idx = list(c("TYP",'DD')),
-         paired = FALSE)
-two.group.unpaired.meandiff_me <- dabestr::cohens_d(multi.group_me)
-
-plot(two.group.unpaired.meandiff_me, palette=c("blue","red"),rawplot.ylabel = "MT Error Slope")
-```
 \newpage
 
 # Statistical Learning
@@ -1093,7 +874,7 @@ stat.test <- all_acc_table %>%
 stat.test
 stat.test <- stat.test %>% add_xy_position(x = "group", fun = "mean_se")
 all_acc_table$Subgroup = as.factor(all_acc_table$Subgroup)
-cbbPalette <- c("#00BDD0","#E7861B")
+#cbbPalette <- c("#00BDD0","#E7861B")
 ggplot() +
   geom_bar(aes(x = Subgroup,y = subj_corr,fill = Subgroup),data=all_acc_table,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
   scale_fill_manual("legend", values = c("DD" = "#00BDD0", "TYP" = "#E7861B"))+
@@ -1102,11 +883,9 @@ ggplot() +
   xlab(label = 'Group') +
   #coord_cartesian(ylim = c(0.3,1)) +
   geom_errorbar(aes(y = subj_corr, x = Subgroup),data=all_acc_table,size = 0.3,width = 0.2,fun.y = function(x) mean(x),fun.ymin = function(x) mean(x) - sd(x)/sqrt(length(x)),fun.ymax = function(x) mean(x) + sd(x)/sqrt(length(x)) ,stat = 'summary')+
-  geom_beeswarm(aes(x = Subgroup,y = subj_corr, colour = Subgroup),data=all_acc_table,dodge.width=0.9,cex=2.5) +
+  geom_beeswarm(aes(x = Subgroup,y = subj_corr, colour = Subgroup),data=all_acc_table,dodge.width=1,cex=3.5) +
   facet_wrap(task~.) +
-  scale_color_manual(values=c('#00BDD0','#E7861B'))
-  scale_fill_brewer(palette = 'Greys') +
-  scale_color_manual(values=cbbPalette)
+  scale_color_manual(values=c('black','black'))
 ```
 #### VSL reliability
 ```{r,include=FALSE,warning = FALSE}
@@ -1162,6 +941,7 @@ x %>%
   focus(slope_me,slope_mt, slopeProp_On, vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)%>% fashion()
 
 ```
+
 ```{r, echo=FALSE, include=TRUE}
 task_only<-d_all%>%ungroup%>%dplyr::select(slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
 cor<-round(cor(task_only,use="complete.obs"),2)
