@@ -7,6 +7,8 @@ output:
   html_document:
     df_print: paged
   pdf_document: default
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -20,7 +22,7 @@ knitr::opts_chunk$set(echo = TRUE)
 Packages <- c("dplyr", "stats", "psych", "ggplot2", "lme4",
               "gridExtra", "dplyr","caret","tidyverse",
               "plyr","lmerTest","ggpubr","nlme","emmeans","rstatix","ggbeeswarm",
-              "arsenal","sjstats","r2glmm"
+              "arsenal","sjstats","r2glmm","BayesFactor"
 )
 
 lapply(Packages, library, character.only = TRUE)
@@ -182,7 +184,7 @@ m1<-lm(rotarypursuit_0_2~Age+Sex+Subgroup,data=d)
 anova(m1)
 #sjstats::eta_sq(m1)
 r2beta(m1, method = "nsj")
-
+cohen.d(d$rotarypursuit_0_2,d$Subgroup)
 
 ```
 
@@ -226,6 +228,13 @@ summary(lmerrp2_DD)
 ```{r, echo=FALSE,warning = FALSE}
 lmerrp2_TYP <- lmer(prop_on~trial+Age+Sex +kbit_ss+(1+trial|PartID),data=rp2_age_gender_iq[rp2_age_gender_iq$Subgroup=="TYP",])
 summary(lmerrp2_TYP)
+```
+
+create a mean rp for df
+```{r, echo=FALSE,warning = FALSE}
+
+rp_df<-dplyr::summarise(group_by(rp2,PartID,Subgroup),
+                         mean_rp=mean(prop_on,na.rm = T))
 ```
 #### RP Plot by trial 
 
@@ -344,6 +353,10 @@ mt2$Subgroup<-as.factor(mt2$Subgroup)
 
 ```
 
+```{r}
+mt_df<-dplyr::summarise(group_by(mt2,PartID,Subgroup),
+                         mean_mt_e=mean(error,na.rm = T),mean_mt_t=mean(time, na.rm=T))
+```
 ### Statistical Analysis by Trial
 
 #### Baseline differences on trial one
@@ -370,6 +383,9 @@ anova(mtri2)
 #eta_sq(mtri2)
 
 t.test(time~Subgroup,data=mt_1)
+cohen.d(mt_1$time,mt_1$Subgroup)
+cohen.d(mt_1$error,mt_1$Subgroup)
+
 ```
 
 ### Linear mixed modeling
@@ -446,7 +462,7 @@ mt_t<-ggplot(data = mtTPlot, aes(x=trial, y=meanT, color = Subgroup))+
   theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
 
 mt_t2<-mt_t + theme(legend.position = "none")
-ggsave("mt_t011222.png",width=6, height=4)
+#ggsave("mt_t011222.png",width=6, height=4)
 
 ```
 
@@ -474,7 +490,7 @@ mt_e<-ggplot(data = mtEPlot, aes(x=trial, y=meanE, color = Subgroup))+
   theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
 
 mt_e2<-mt_e + theme(legend.position = "none")
-ggsave("mt_e011222.png",width=6, height=4)
+#ggsave("mt_e011222.png",width=6, height=4)
 ```
 
 \newpage
@@ -482,8 +498,8 @@ ggsave("mt_e011222.png",width=6, height=4)
 # Statistical Learning
 ```{r, echo=FALSE,warning = FALSE}
 names(SL)[names(SL) == "subj"] <- "PartID"
-d_all<-merge(d,rp_data,all = TRUE)
-d_all <-merge(d_all,mt_data,all=TRUE)
+d_all<-merge(d,mt_df,all = TRUE)
+d_all <-merge(d_all,rp_df,all=TRUE)
 d_all <-merge(d_all,SL,all=TRUE)
 table(SL$group)
 ```
@@ -592,7 +608,7 @@ tsl_rt<-ggplot(data = tsl_rt_plot, aes(x=reindex, y=mean, col=Subgroup))+
   theme(axis.line = element_line(arrow = arrow(angle = 15, length = unit(.15,"inches"),type = "closed")))
 
 tsl_rt2<-tsl_rt + theme(legend.position = "none")
-ggsave("tsl_rt011222.png",width=7, height=4)
+#ggsave("tsl_rt011222.png",width=7, height=4)
 ```
 
 ### Plot ASL RT Slope
@@ -859,7 +875,7 @@ print(summary(model_acc_lmer))
 
 - ANCOVA: marginal effect of task (Visual > Auditory)
 ```{r,echo=FALSE,warning=FALSE}
-all_acc_table_complete = subset(all_acc_table,PartID!="ABCD_1708")
+all_acc_table_complete = subset(all_acc_table,PartID="ABCD_1708")
 all_acc_table_complete = subset(all_acc_table_complete,PartID!="ABCD_1727")
 all_acc_table_age_gender_iq = merge(all_acc_table_complete,d[,c(1,3,4,6)],by="PartID",all.x=TRUE)
 model_acc <- lm(subj_corr~task*Subgroup+Age+Sex+kbit_ss,data=all_acc_table_age_gender_iq)
@@ -919,13 +935,11 @@ d_all$WR<-rowMeans(d_all[,c('WID','WA')])
 d_all_dys = subset(d_all,Subgroup == "DD")
 d_all_typ = subset(d_all,Subgroup == "TYP")
 
-task_data<-d_all%>%ungroup%>%dplyr::select(IQ,WR,Vocabulary,PA,Nonword,DigitsSpan,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
+task_data<-d_all%>%ungroup%>%dplyr::select(IQ,WR,Vocabulary,PA,Nonword,DigitsSpan,mean_rp,mean_mt_t,mean_mt_e,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)
 
-task_data<-d_all%>%ungroup%>%dplyr::select(IQ,WR,Vocabulary,PA,Nonword,DigitsSpan,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
+task_data_dys<-d_all_dys%>%ungroup%>%dplyr::select(IQ,WR,Vocabulary,PA,Nonword,DigitsSpan,mean_rp,mean_mt_t,mean_mt_e,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)
 
-task_data_dys<-d_all_dys%>%ungroup%>%dplyr::select(IQ,WR,Vocabulary,PA,Nonword,DigitsSpan,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
-
-task_data_typ<-d_all_typ%>%ungroup%>%dplyr::select(IQ,WR,Vocabulary,PA,Nonword,DigitsSpan,slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
+task_data_typ<-d_all_typ%>%ungroup%>%dplyr::select(IQ,WR,Vocabulary,PA,Nonword,DigitsSpan,mean_rp,mean_mt_t,mean_mt_e,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)
 
 corstars(task_data,method="pearson")#you need to run the function first
 ```
@@ -943,7 +957,7 @@ x %>%
 ```
 
 ```{r, echo=FALSE, include=TRUE}
-task_only<-d_all%>%ungroup%>%dplyr::select(slopeProp_On,slope_mt,slope_me,vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)
+task_only<-d_all%>%ungroup%>%dplyr::select(mean_rp,mean_mt_t,mean_mt_e,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)
 cor<-round(cor(task_only,use="complete.obs"),2)
 cor
 upper<-cor
@@ -957,6 +971,11 @@ save_correlation_matrix(task_only,
                         use='lower')
 ```
 
+```{r}
+#mean_rp,mean_mt_t,mean_mt_e,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale
+BayesFactor::correlationBF(task_data$vis_slope_scale, task_data$aud_slope_scale)
+
+```
 ### Dys only
 
 - both the rotary pursuit and ASL accuracy/RT are related to reading
@@ -966,7 +985,7 @@ save_correlation_matrix(task_only,
 #corstars(task_data_dys,method="pearson")#you need to run the function first
 x_d <- correlate(task_data_dys)
 x_d %>% 
-   focus(slope_me,slope_mt, slopeProp_On, vis_slope_scale,vis_fam_rt,aud_slope_scale,aud_fam_rt)%>% fashion()
+   focus(mean_rp,mean_mt_t,mean_mt_e,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)%>% fashion()
 plot(task_data_dys$slopeProp_On,task_data_dys$WR)
 plot(task_data_typ$slopeProp_On,task_data_typ$WR)
 
@@ -984,6 +1003,7 @@ ggplot(task_data_dys, aes(x = WA, y = slopeProp_On)) +
   labs(x = "Word Attack ", y = "Rotary Pursuit") +
   theme(axis.title = element_text(family = "Trebuchet MS", size = 14))+ theme(panel.background = element_blank(),legend.position = "none")
 ```
+
 ```{r, echo=FALSE}
 
 ggplot(task_data_dys, aes(x = RAN_2Set, y = aud_slope_scale)) +
@@ -1005,6 +1025,6 @@ ggplot(task_data_dys, aes(x = RAN_2Set, y = aud_slope_scale)) +
 #corstars(task_data_typ,method="pearson")#you need to run the function first
 x_t <- correlate(task_data_typ)
 x_t %>% 
-  focus(slope_me,slope_mt, slopeProp_On, vis_slope_scale,vis_fam_rt,aud_slope_scale,aud_fam_rt)%>% fashion()
+  focus(mean_rp,mean_mt_t,mean_mt_e,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)%>% fashion()
 
 ```
