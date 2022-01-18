@@ -22,7 +22,7 @@ knitr::opts_chunk$set(echo = TRUE)
 Packages <- c("dplyr", "stats", "psych", "ggplot2", "lme4",
               "gridExtra", "dplyr","caret","tidyverse",
               "plyr","lmerTest","ggpubr","nlme","emmeans","rstatix","ggbeeswarm",
-              "arsenal","sjstats","r2glmm","BayesFactor"
+              "arsenal","sjstats","r2glmm","BayesFactor","MASS"
 )
 
 lapply(Packages, library, character.only = TRUE)
@@ -555,17 +555,19 @@ data %>%
           )
 ```
 
-# TSL Analysis
+# ASL Analysis
 
 ### RT by Trial Analysis
 - There is no significant group difference in baseline speed for TSL.
 ```{r,echo=FALSE,warning = FALSE}
 t.test(subj_table_tsl_usable$mean_rt~subj_table_tsl_usable$Subgroup)
+cohen.d(mean_rt~Subgroup,data=subj_table_tsl_usable)
 ```
 - There is no significant group difference in detection accuracy for TSL
 
 ```{r,echo=FALSE,warning = FALSE}
 t.test(hit_rate~Subgroup,data=subj_table_tsl_usable)
+cohen.d(hit_rate~Subgroup,data=subj_table_tsl_usable)
 ```
 - No RT effect of group or interaction tested either by lm or lmer
 ```{r,echo=FALSE,warning=FALSE}
@@ -585,7 +587,7 @@ tsl_rt_ancova=lm(rt_slope~Subgroup+Age+Sex+kbit_ss,data=subj_table_tsl_gender_iq
 summary(tsl_rt_ancova)
 ```
 
-#### Plot of TSL RT
+#### Plot of ASL RT
 - RT as the function of Target repetition
 ```{r,echo=FALSE}
 tsl_rt_plot<-dplyr::summarise(group_by(fam_trial_tsl,Subgroup,reindex), n = n(),
@@ -652,6 +654,8 @@ data %>%
 ```{r,echo=FALSE,warning = FALSE}
 t.test(subj_table_vsl$mean_rt~subj_table_vsl$Subgroup)
 t.test(subj_table_vsl$hit_rate~subj_table_vsl$Subgroup)
+cohen.d(mean_rt~Subgroup,data=subj_table_vsl)
+cohen.d(hit_rate~Subgroup,data=subj_table_vsl)
 ```
 - There is no significant group difference in target detection accuracy for VSL
 ```{r,echo=FALSE,warning = FALSE}
@@ -807,8 +811,9 @@ tsl_accuracy_age_gender_iq = merge(tsl_accuracy,d[,c(1,3,4,6)],by="PartID",all.x
 - generalized linear effect modeling within each task (both models failed to converge with IQ included, removing IQ from the covariates fix the issues)
 -  VSL, no group effect
 ```{r,echo=FALSE}
-model_vslacc_lmer_cov <- glmer(corr~Age+Sex+kbit_ss+Subgroup+(1|PartID)+(1|trial),data=vsl_accuracy_age_gender_iq,family="binomial", control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+model_vslacc_lmer_cov <- glmmPQL(corr~Age+Sex+kbit_ss+Subgroup,random=~1|PartID/trial,data=vsl_accuracy_age_gender_iq,family="binomial")
 print(summary(model_vslacc_lmer_cov))
+r2beta(model_vslacc_lmer_cov,method="sgv")
 ```
 ```{r,echo=FALSE, include=FALSE}
 all_acc_table_age_gender_iq = merge(all_acc_table,d[,c(1,3,4,6)],by="PartID",all.x=TRUE)
@@ -819,8 +824,9 @@ asl_acc_table = subset(all_acc_table_age_gender_iq,task == "Auditory")
 ```
 - Significant group effects for ASL (Typ>Dys)
 ```{r,echo=FALSE}
-model_tslacc_lmer_cov <- glmer(corr~Age+Sex+kbit_ss+Subgroup+(1|PartID)+(1|trial),data=tsl_accuracy_age_gender_iq,family="binomial",control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+model_tslacc_lmer_cov <- glmmPQL(corr~Age+Sex+kbit_ss+Subgroup,random=~1|PartID/trial,data=tsl_accuracy_age_gender_iq,family="binomial")
 print(summary(model_tslacc_lmer_cov))
+r2beta(model_tslacc_lmer_cov,method="sgv")
 ```
 ```{r,echo=FALSE, include=FALSE}
 #aslacc_ancova <- aov(subj_corr~Age+Sex+IQ+Subgroup,data=asl_acc_table)
@@ -866,11 +872,12 @@ plot(multi.group_tsl_acc_2, palette=c("blue","red"),rawplot.ylabel = "ASL Accura
 
 #### Task by Group Interaction
 
-- LME: main effect of task (visual > auditory); main effect of group (TYP > DD); 
+- LME: main effect of task (visual > auditory); main effect of group (TYP > DD); interaction between group and task
 ```{r,echo=FALSE}
 all_accuracy_age_gender_iq = merge(all_accuracy,d[,c(1,3,4,6)],by="PartID",all.x=TRUE)
-model_acc_lmer <- glmer(corr~task*Subgroup+Age+Sex+(1+task|PartID)+(1|trial),data=all_accuracy_age_gender_iq,family="binomial",control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+model_acc_lmer <- glmmPQL(corr~task*Subgroup+Age+Sex,random = ~1|PartID/trial/task,data=all_accuracy_age_gender_iq,family="binomial")
 print(summary(model_acc_lmer))
+r2beta(model_acc_lmer,method="sgv")
 ```
 
 - ANCOVA: marginal effect of task (Visual > Auditory)
