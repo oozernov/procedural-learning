@@ -900,7 +900,8 @@ all_acc_table$Subgroup = as.factor(all_acc_table$Subgroup)
 #cbbPalette <- c("#00BDD0","#E7861B")
 ggplot() +
   geom_bar(aes(x = Subgroup,y = subj_corr,fill = Subgroup),data=all_acc_table,colour = '#000000',fun.data = mean_sdl,fun.args = list(mult = 1),stat = 'summary',position = position_dodge(width = 0.9)) +
-  scale_fill_manual("legend", values = c("DD" = "#00BDD0", "TYP" = "#E7861B"))+
+  #scale_fill_manual("legend", values = c("DD" = "#00BDD0", "TYP" = "#E7861B"))+
+  scale_fill_manual("legend", values = c("DD" = "grey73", "TYP" = "grey86"))+
   theme_classic(base_size = 18.0) +
   ylab(label = '% Correct') +
   xlab(label = 'Group') +
@@ -942,11 +943,11 @@ d_all$WR<-rowMeans(d_all[,c('WID','WA')])
 d_all_dys = subset(d_all,Subgroup == "DD")
 d_all_typ = subset(d_all,Subgroup == "TYP")
 
-task_data<-d_all%>%ungroup%>%dplyr::select(IQ,WR,Vocabulary,PA,Nonword,DigitsSpan,mean_rp,mean_mt_t,mean_mt_e,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)
+task_data<-d_all%>%ungroup%>%dplyr::select(IQ,WR,PA,Nonword,DigitsSpan,mean_rp,mean_mt_t,mean_mt_e,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)
 
-task_data_dys<-d_all_dys%>%ungroup%>%dplyr::select(IQ,WR,Vocabulary,PA,Nonword,DigitsSpan,mean_rp,mean_mt_t,mean_mt_e,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)
+task_data_dys<-d_all_dys%>%ungroup%>%dplyr::select(IQ,WR,PA,Nonword,DigitsSpan,mean_rp,mean_mt_t,mean_mt_e,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)
 
-task_data_typ<-d_all_typ%>%ungroup%>%dplyr::select(IQ,WR,Vocabulary,PA,Nonword,DigitsSpan,mean_rp,mean_mt_t,mean_mt_e,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)
+task_data_typ<-d_all_typ%>%ungroup%>%dplyr::select(IQ,WR,Nonword,DigitsSpan,mean_rp,mean_mt_t,mean_mt_e,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)
 
 corstars(task_data,method="pearson")#you need to run the function first
 ```
@@ -959,7 +960,7 @@ corstars(task_data,method="pearson")#you need to run the function first
 library(corrr)
 x <- correlate(task_data)
 x %>% 
-  focus(slope_me,slope_mt, slopeProp_On, vis_slope_scale,aud_slope_scale,aud_fam_rt,vis_fam_rt)%>% fashion()
+  focus(mean_rp,mean_mt_t,mean_mt_e,vis_slope_scale,aud_acc,vis_acc,aud_slope_scale)%>% fashion()
 
 ```
 
@@ -989,11 +990,11 @@ BayesFactor::correlationBF(task_data$vis_slope_scale, task_data$aud_slope_scale)
 - RP performance is associated with better reading
 
 ```{r, echo=FALSE, include=TRUE}
-#corstars(task_data_dys,method="pearson")#you need to run the function first
+corstars(task_data_dys,method="pearson")#you need to run the function first
 x_d <- correlate(task_data_dys)
 x_d %>% 
    focus(mean_rp,mean_mt_t,mean_mt_e,aud_acc,vis_acc,aud_slope_scale,vis_slope_scale)%>% fashion()
-plot(task_data_dys$slopeProp_On,task_data_dys$WR)
+plot(subset$Time[!is.na(task_data_dys$slopeProp_On)],subset$Time[!is.na(task_data_dys$WR)],type="l")
 plot(task_data_typ$slopeProp_On,task_data_typ$WR)
 
 ```
