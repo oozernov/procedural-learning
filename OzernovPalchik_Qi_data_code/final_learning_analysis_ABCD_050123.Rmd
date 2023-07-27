@@ -29,8 +29,8 @@ source("corstars_function.R")
 ####Organizational ####
 
 #set subject directory
-#setwd("~/Dropbox (MIT)/learning_analysis")
-#setwd("~/Dropbox (MIT)/Github/procedural-learning")
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
 
 #import pocedural.csv file
 d <- read.csv('procedural_data072320.csv',stringsAsFactors = FALSE,skipNul = TRUE,
